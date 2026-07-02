@@ -13,7 +13,9 @@ The API surface (endpoints, request and response shapes) is defined by the OpenA
 - `smileid/errors/` — hand-written error types.
 - `smileid/helpers/` — hand-written convenience helpers.
 
-At this stage the repository is a scaffold only: these directories don't exist yet, and no SDK code has been written.
+Auth token lifecycle, transport, retries, serialization and errors are hand-written and must survive a future generator run; only `smileid/generated/` may be regenerated.
+
+All tests are offline (respx mocks) except `tests/test_e2e_sandbox.py`, which reads `SMILE_PARTNER_ID` and `SMILE_API_KEY` from the environment and skips when they are unset.
 
 ## Running tests
 
