@@ -32,10 +32,12 @@ def test_sandbox_enhanced_kyc_completes() -> None:
             country="NG",
             id_type="NIN",
             id_number="12345678901",
+            # The sandbox only accepts recognized test identities, matched on
+            # given_names + last_name + email.
             user_details={
-                "given_names": "John",
-                "last_name": "Doe",
-                "email": "john@example.com",
+                "given_names": "Amina Fatou",
+                "last_name": "Clearwater",
+                "email": "amina.clearwater@example.com",
             },
             consent=smileid.Consent.granted(
                 granted_at=datetime.now(timezone.utc),
