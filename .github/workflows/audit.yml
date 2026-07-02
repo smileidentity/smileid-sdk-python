@@ -1,0 +1,42 @@
+name: Security Audit
+
+on:
+  pull_request:
+    paths:
+      - 'pyproject.toml'
+  workflow_dispatch:
+  schedule:
+    - cron: '0 9 * * *'
+
+jobs:
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+      - name: Install package
+        run: pip install -e .
+      - name: Run pip-audit
+        uses: pypa/gh-action-pip-audit@1220774d901786e6f652ae159f7b6bc8fea6d266 # v1.1.0
+        with:
+          inputs: .
+      - name: Create issue on failure
+        if: failure() && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          EXISTING=$(gh issue list --label "security-audit" --state open --json number --jq 'length' || echo "0")
+          if [ "${EXISTING:-0}" -gt 0 ]; then exit 0; fi
+          TITLE_DATE=$(date +%Y-%m-%d)
+          gh label create "security-audit" --color "D93F0B" --force 2>/dev/null || true
+          gh label create "priority:high" --color "B60205" --force 2>/dev/null || true
+          gh issue create \
+            --title "Security: Python dependency vulnerabilities detected (${TITLE_DATE})" \
+            --label "security-audit,priority:high" \
+            --body "The daily security audit has detected vulnerabilities. See [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details."
