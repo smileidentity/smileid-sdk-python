@@ -43,6 +43,101 @@ def test_get_retried_on_429_and_honours_retry_after(
     assert sleeps == [7.0]  # honoured Retry-After header
 
 
+def test_retry_after_http_date_form(
+    respx_mock: Any, mock_token: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """RFC 7231 HTTP-date Retry-After is parsed into a relative delay."""
+    from datetime import datetime, timedelta, timezone
+    from email.utils import format_datetime
+
+    sleeps = []
+    monkeypatch.setattr(
+        "smileid.client.transport.time.sleep", lambda s: sleeps.append(s)
+    )
+    retry_at = format_datetime(
+        datetime.now(timezone.utc) + timedelta(seconds=10), usegmt=True
+    )
+    route = respx_mock.get(f"{BASE_URL}/v3/services/id_status").mock(
+        side_effect=[
+            httpx.Response(
+                429, headers={"Retry-After": retry_at}, json={"status": "x", "message": "y"}
+            ),
+            httpx.Response(200, json={}),
+        ]
+    )
+    client = make_client()
+    client.services.id_status(country="NG", id_type="NIN")
+    assert route.call_count == 2
+    assert len(sleeps) == 1
+    assert 8.0 <= sleeps[0] <= 10.0  # roughly the 10s delta, never negative
+
+
+def test_retry_after_past_http_date_floors_at_zero(
+    respx_mock: Any, mock_token: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sleeps = []
+    monkeypatch.setattr(
+        "smileid.client.transport.time.sleep", lambda s: sleeps.append(s)
+    )
+    route = respx_mock.get(f"{BASE_URL}/v3/services/id_status").mock(
+        side_effect=[
+            httpx.Response(
+                429,
+                headers={"Retry-After": "Mon, 01 Jan 2001 00:00:00 GMT"},
+                json={"status": "x", "message": "y"},
+            ),
+            httpx.Response(200, json={}),
+        ]
+    )
+    client = make_client()
+    client.services.id_status(country="NG", id_type="NIN")
+    assert route.call_count == 2
+    assert sleeps == [0.0]
+
+
+def test_retry_after_capped_at_60_seconds(
+    respx_mock: Any, mock_token: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sleeps = []
+    monkeypatch.setattr(
+        "smileid.client.transport.time.sleep", lambda s: sleeps.append(s)
+    )
+    route = respx_mock.get(f"{BASE_URL}/v3/services/id_status").mock(
+        side_effect=[
+            httpx.Response(
+                429, headers={"Retry-After": "3600"}, json={"status": "x", "message": "y"}
+            ),
+            httpx.Response(200, json={}),
+        ]
+    )
+    client = make_client()
+    client.services.id_status(country="NG", id_type="NIN")
+    assert route.call_count == 2
+    assert sleeps == [60.0]  # capped, never an unbounded sleep
+
+
+def test_retry_after_unparseable_falls_back_to_backoff(
+    respx_mock: Any, mock_token: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sleeps = []
+    monkeypatch.setattr(
+        "smileid.client.transport.time.sleep", lambda s: sleeps.append(s)
+    )
+    route = respx_mock.get(f"{BASE_URL}/v3/services/id_status").mock(
+        side_effect=[
+            httpx.Response(
+                429, headers={"Retry-After": "soonish"}, json={"status": "x", "message": "y"}
+            ),
+            httpx.Response(200, json={}),
+        ]
+    )
+    client = make_client()
+    client.services.id_status(country="NG", id_type="NIN")
+    assert route.call_count == 2
+    assert len(sleeps) == 1
+    assert sleeps[0] > 0  # exponential backoff used instead
+
+
 def test_entry_post_never_retried_on_500(respx_mock: Any, mock_token: Any) -> None:
     route = respx_mock.post(f"{BASE_URL}/v3/enhanced_kyc").mock(
         return_value=httpx.Response(500, json={"status": "Server Error", "message": "boom"})

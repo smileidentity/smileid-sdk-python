@@ -10,6 +10,8 @@ from __future__ import annotations
 import platform
 import random
 import time
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from typing import List, Optional, Tuple
 
 import httpx
@@ -24,6 +26,9 @@ from smileid.generated.operations import Request
 # HTTP statuses that are safe to retry for idempotent operations.
 # 409 is deliberately absent — it is a business-state conflict, not transient.
 _RETRYABLE_STATUSES = frozenset({408, 429, 500, 502, 503, 504})
+
+# Upper bound on a server-provided Retry-After delay, in seconds.
+_MAX_RETRY_AFTER_SECONDS = 60.0
 
 
 class Transport:
@@ -125,13 +130,27 @@ class Transport:
 
     @staticmethod
     def _retry_after(response: httpx.Response) -> Optional[float]:
+        """Parse Retry-After: delta-seconds or an RFC 7231 HTTP-date.
+
+        The result is floored at 0 and capped at 60 seconds so a
+        server-provided value can never stall the client indefinitely.
+        """
         value = response.headers.get("retry-after")
         if not value:
             return None
         try:
-            return float(value)
+            delay = float(value)
         except ValueError:
-            return None
+            try:
+                moment = parsedate_to_datetime(value)
+            except (TypeError, ValueError):
+                return None
+            if moment is None:
+                return None
+            if moment.tzinfo is None:
+                moment = moment.replace(tzinfo=timezone.utc)
+            delay = (moment - datetime.now(timezone.utc)).total_seconds()
+        return min(max(delay, 0.0), _MAX_RETRY_AFTER_SECONDS)
 
     # -- request assembly --------------------------------------------------
 
