@@ -1,4 +1,4 @@
-"""Matrix item 3: retry policy (spec §2.6)."""
+"""Matrix item 3: retry policy."""
 
 from __future__ import annotations
 

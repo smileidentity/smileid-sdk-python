@@ -1,4 +1,4 @@
-"""Polling helper: wait_until_complete (spec §6.9)."""
+"""Polling helper: wait_until_complete."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ def wait_until_complete(
     timeout: float = 60.0,
     treat_not_found_as_pending: bool = True,
 ) -> JobStatus:
-    """Poll ``retrieve`` until the job completes (spec §6.9).
+    """Poll ``retrieve`` until the job completes.
 
     Returns the terminal :class:`JobStatus`. When ``treat_not_found_as_pending``
     is false, a ``not_found`` result is returned immediately. Raises

@@ -1,4 +1,4 @@
-"""HTTP transport (spec §2.2, §2.6, §2A).
+"""HTTP transport.
 
 The single layer that touches HTTP: it builds the URL, attaches auth and
 telemetry headers, optionally signs the body, serializes the multipart / JSON
@@ -21,7 +21,7 @@ from smileid.errors import APIError, ConnectionError, parse_error
 from smileid.generated import operations
 from smileid.generated.operations import Request
 
-# HTTP statuses that are safe to retry for idempotent operations (spec §2.6).
+# HTTP statuses that are safe to retry for idempotent operations.
 # 409 is deliberately absent — it is a business-state conflict, not transient.
 _RETRYABLE_STATUSES = frozenset({408, 429, 500, 502, 503, 504})
 
@@ -74,7 +74,7 @@ class Transport:
     # -- public send -------------------------------------------------------
 
     def send(self, request: Request, *, timeout: Optional[float] = None) -> httpx.Response:
-        """Execute a request, refreshing the token once on a 401 (spec §2.3)."""
+        """Execute a request, refreshing the token once on a 401."""
         response: Optional[httpx.Response] = None
         for auth_attempt in range(2):
             response = self._send_with_retries(request, timeout=timeout)
@@ -171,7 +171,7 @@ class Transport:
 
     @staticmethod
     def _multipart_files(request: Request) -> List[Tuple[str, tuple]]:
-        """Assemble multipart parts (spec §5.3).
+        """Assemble multipart parts.
 
         Every part is routed through httpx's ``files`` list so the body is
         always ``multipart/form-data`` (even scalar-only bodies), part order is

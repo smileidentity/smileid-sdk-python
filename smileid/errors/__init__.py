@@ -1,4 +1,4 @@
-"""Typed error hierarchy for the Smile ID SDK (spec §7).
+"""Typed error hierarchy for the Smile ID SDK.
 
 One base class, ``SmileIDError``; typed subclasses keyed on HTTP status. Every
 error exposes ``status_code``, ``status`` (HTTP status text from the body when
@@ -117,7 +117,7 @@ _STATUS_MAP = {
 
 
 def error_class_for(status_code: int) -> type[SmileIDError]:
-    """Return the error class for an HTTP status code (spec §7 table)."""
+    """Return the error class for an HTTP status code."""
     klass = _STATUS_MAP.get(status_code)
     if klass is not None:
         return klass
@@ -127,7 +127,7 @@ def error_class_for(status_code: int) -> type[SmileIDError]:
 
 
 def parse_error(response: "httpx.Response") -> SmileIDError:
-    """Build a typed error from a failed HTTP response (spec §2A parse_error).
+    """Build a typed error from a failed HTTP response.
 
     Handles both wire shapes: ``{status, message}`` (everywhere; id_status
     reorders to ``{message, status}``) and ``{error, code}`` (the three

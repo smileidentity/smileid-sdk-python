@@ -1,4 +1,4 @@
-"""JWT token lifecycle (spec §2.3, §2A) and the HMAC signing hook (spec §2.5)."""
+"""JWT token lifecycle and the HMAC signing hook."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import time
 from datetime import datetime, timezone
 from typing import Callable, Optional
 
-# Refresh a token this many seconds before its ``exp`` claim (spec §2.3 skew).
+# Refresh a token this many seconds before its ``exp`` claim.
 _EXPIRY_SKEW_SECONDS = 60
 
 
@@ -19,7 +19,7 @@ def decode_jwt_exp(jwt: str) -> Optional[int]:
     """Return the ``exp`` claim (epoch seconds) from a JWT, or ``None``.
 
     The token response carries no explicit expiry, so the ``exp`` claim is the
-    only signal. Returns ``None`` when the token cannot be decoded (spec §2.3).
+    only signal. Returns ``None`` when the token cannot be decoded.
     """
     try:
         payload_segment = jwt.split(".")[1]
@@ -33,7 +33,7 @@ def decode_jwt_exp(jwt: str) -> Optional[int]:
 
 
 class TokenManager:
-    """Thread-safe cache for the internal JWT (spec §2.3, §2A token lifecycle).
+    """Thread-safe cache for the internal JWT.
 
     Concurrent callers never stampede the token endpoint: fetching happens under
     a lock. Callers pass a ``fetcher`` that performs the actual POST /v3/token.
@@ -67,13 +67,13 @@ class TokenManager:
 
 def iso8601_millis_utc(moment: Optional[datetime] = None) -> str:
     """Format a UTC timestamp as ISO 8601 with milliseconds, e.g.
-    ``2026-03-10T12:00:00.000Z`` (spec §2.5)."""
+    ``2026-03-10T12:00:00.000Z``."""
     moment = (moment or datetime.now(timezone.utc)).astimezone(timezone.utc)
     return moment.strftime("%Y-%m-%dT%H:%M:%S.") + f"{moment.microsecond // 1000:03d}Z"
 
 
 def sign_request(partner_secret: str, timestamp: str, body: bytes) -> str:
-    """Compute the provisional HMAC request signature (spec §2.5).
+    """Compute the provisional HMAC request signature.
 
     ``hex(HMAC_SHA256(key=partner_secret, message=timestamp + body_bytes))``.
 

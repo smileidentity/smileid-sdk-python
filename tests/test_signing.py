@@ -1,4 +1,4 @@
-"""HMAC request signing: wired but OFF unless partner_secret is set (spec §2.5)."""
+"""HMAC request signing: wired but OFF unless partner_secret is set."""
 
 from __future__ import annotations
 

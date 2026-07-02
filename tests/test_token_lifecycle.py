@@ -1,4 +1,4 @@
-"""Matrix item 2: JWT token lifecycle (spec §2.3, §2A)."""
+"""Matrix item 2: JWT token lifecycle."""
 
 from __future__ import annotations
 

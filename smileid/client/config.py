@@ -1,4 +1,4 @@
-"""Client configuration (spec §2.1)."""
+"""Client configuration."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Matrix item 1: golden multipart wire shape and header routing (spec §5.3, §6)."""
+"""Matrix item 1: golden multipart wire shape and header routing."""
 
 from __future__ import annotations
 
@@ -63,7 +63,7 @@ def test_enhanced_kyc_multipart_shape(respx_mock: Any, mock_token: Any) -> None:
     assert "SmileID-Partner-ID" not in request.headers
     assert request.headers["SmileID-Token"]  # injected
 
-    # Telemetry headers always present (spec §2.4).
+    # Telemetry headers always present.
     assert request.headers["SmileID-Source-SDK"] == "python"
     assert request.headers["SmileID-Source-SDK-Version"] == "0.1.0"
     assert request.headers["User-Agent"].startswith("smileid-sdk-python/0.1.0")

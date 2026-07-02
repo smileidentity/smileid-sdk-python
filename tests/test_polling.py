@@ -1,4 +1,4 @@
-"""Matrix item 7: wait_until_complete poll helper (spec §6.9)."""
+"""Matrix item 7: wait_until_complete poll helper."""
 
 from __future__ import annotations
 

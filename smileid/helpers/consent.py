@@ -1,4 +1,4 @@
-"""Consent builder (spec §5.1).
+"""Consent builder.
 
 Serialized as a JSON part named ``consent``. ``granted`` is always ``true`` — the
 wire schema permits no other value.
@@ -38,7 +38,7 @@ class Consent:
         notice_language: str,
         notice_privacy_policy_url: str,
     ) -> "Consent":
-        """Build a consent record with ``granted=true`` (spec §5.1)."""
+        """Build a consent record with ``granted=true``."""
         return cls(granted_at, notice_language, notice_privacy_policy_url)
 
     def to_dict(self) -> dict:

@@ -1,4 +1,4 @@
-"""The Smile ID client and its resource namespaces (spec §4).
+"""The Smile ID client and its resource namespaces.
 
 Canonical surface: ``client.<resource>.<verb>(...)``. Wire fields stay
 snake_case; per-request overrides (``callback_url``, ``timeout``) are keyword
@@ -76,7 +76,7 @@ class EnhancedKycResource(_Resource):
         user_id: Optional[str] = None,
         timeout: Optional[float] = None,
     ) -> AcceptedResponse:
-        """POST /v3/enhanced_kyc (spec §6.1)."""
+        """POST /v3/enhanced_kyc."""
         request = operations.enhanced_kyc(
             country=country,
             id_type=id_type,
@@ -112,7 +112,7 @@ class DocumentsResource(_Resource):
         user_id: Optional[str] = None,
         timeout: Optional[float] = None,
     ) -> AcceptedResponse:
-        """POST /v3/document_verification (spec §6.2)."""
+        """POST /v3/document_verification."""
         request = operations.document_verification(
             selfie_image=_selfie(selfie_image),
             liveness_images=_liveness(liveness_images),
@@ -147,7 +147,7 @@ class DocumentsResource(_Resource):
         user_id: Optional[str] = None,
         timeout: Optional[float] = None,
     ) -> AcceptedResponse:
-        """POST /v3/enhanced_document_verification (spec §6.3). id_type required."""
+        """POST /v3/enhanced_document_verification. id_type required."""
         if not id_type:
             raise ValidationError("id_type is required for verify_enhanced")
         request = operations.enhanced_document_verification(
@@ -186,7 +186,7 @@ class BiometricKycResource(_Resource):
         user_id: Optional[str] = None,
         timeout: Optional[float] = None,
     ) -> AcceptedResponse:
-        """POST /v3/biometric_kyc (spec §6.4)."""
+        """POST /v3/biometric_kyc."""
         request = operations.biometric_kyc(
             selfie_image=_selfie(selfie_image),
             liveness_images=_liveness(liveness_images),
@@ -221,7 +221,7 @@ class BiometricResource(_Resource):
         user_id: Optional[str] = None,
         timeout: Optional[float] = None,
     ) -> AcceptedResponse:
-        """POST /v3/registration (spec §6.5)."""
+        """POST /v3/registration."""
         request = operations.registration(
             selfie_image=_selfie(selfie_image),
             liveness_images=_liveness(liveness_images),
@@ -252,7 +252,7 @@ class BiometricResource(_Resource):
         metadata: Optional[list] = None,
         timeout: Optional[float] = None,
     ) -> AcceptedResponse:
-        """POST /v3/authentication (spec §6.6). user_id in body."""
+        """POST /v3/authentication. user_id in body."""
         if not use_enrolled_image:
             if selfie_image is None or liveness_images is None:
                 raise ValidationError(
@@ -291,7 +291,7 @@ class BiometricResource(_Resource):
         metadata: Optional[list] = None,
         timeout: Optional[float] = None,
     ) -> AcceptedResponse:
-        """POST /v3/compare (spec §6.7)."""
+        """POST /v3/compare."""
         request = operations.compare(
             selfie_image=_selfie(selfie_image),
             comparison_image=_selfie(comparison_image, "comparison.jpg"),
@@ -312,7 +312,7 @@ class BiometricResource(_Resource):
 
 class VerificationsResource(_Resource):
     def retrieve(self, job_id: str, *, timeout: Optional[float] = None) -> JobStatus:
-        """GET /v3/status/{jobId} (spec §6.8). 404 returns a not_found JobStatus."""
+        """GET /v3/status/{jobId}. 404 returns a not_found JobStatus."""
         request = operations.get_status(job_id)
         response = self._transport.send(request, timeout=timeout)
         return JobStatus.model_validate(response.json())
@@ -325,7 +325,7 @@ class VerificationsResource(_Resource):
         timeout: float = 60.0,
         treat_not_found_as_pending: bool = True,
     ) -> JobStatus:
-        """Poll retrieve until the job completes (spec §6.9)."""
+        """Poll retrieve until the job completes."""
         return wait_until_complete(
             self.retrieve,
             job_id,
@@ -341,7 +341,7 @@ class VerificationsResource(_Resource):
         callback_url: Optional[str] = None,
         timeout: Optional[float] = None,
     ) -> ReplayCallbackResponse:
-        """POST /v3/replay/{job_id} (spec §6.10)."""
+        """POST /v3/replay/{job_id}."""
         request = operations.replay(job_id, self._callback(callback_url))
         response = self._transport.send(request, timeout=timeout)
         return ReplayCallbackResponse.model_validate(response.json())
@@ -358,7 +358,7 @@ class UsersResource(_Resource):
         notes: Optional[str] = None,
         timeout: Optional[float] = None,
     ) -> ReportUserFraudResponse:
-        """POST /v3/users/{user_id}/report_fraud (spec §6.11)."""
+        """POST /v3/users/{user_id}/report_fraud."""
         validate_fraud_report(is_fraud=is_fraud, reason=reason, notes=notes)
         request = operations.report_fraud(
             user_id,
@@ -379,7 +379,7 @@ class UsersResource(_Resource):
         notes: Optional[str] = None,
         timeout: Optional[float] = None,
     ) -> ReportUserFraudResponse:
-        """Convenience wrapper: report_fraud with is_fraud=true (spec §4)."""
+        """Convenience wrapper: report_fraud with is_fraud=true."""
         return self.report_fraud(
             user_id,
             is_fraud=True,
@@ -397,7 +397,7 @@ class UsersResource(_Resource):
         reported_by: str,
         timeout: Optional[float] = None,
     ) -> ReportUserFraudResponse:
-        """Convenience wrapper: report_fraud with is_fraud=false (spec §4)."""
+        """Convenience wrapper: report_fraud with is_fraud=false."""
         return self.report_fraud(
             user_id,
             is_fraud=False,
@@ -411,14 +411,14 @@ class ServicesResource(_Resource):
     def bank_codes(
         self, *, country: Optional[str] = None, timeout: Optional[float] = None
     ) -> BankCodesResponse:
-        """GET /v3/services/bank_codes (spec §6.12). No auth."""
+        """GET /v3/services/bank_codes. No auth."""
         response = self._transport.send(operations.bank_codes(country), timeout=timeout)
         return BankCodesResponse.model_validate(response.json())
 
     def supported_id_types(
         self, *, country: Optional[str] = None, timeout: Optional[float] = None
     ) -> SupportedIdTypesResponse:
-        """GET /v3/services/supported_id_types (spec §6.13). No auth."""
+        """GET /v3/services/supported_id_types. No auth."""
         response = self._transport.send(
             operations.supported_id_types(country), timeout=timeout
         )
@@ -432,7 +432,7 @@ class ServicesResource(_Resource):
         locale: Optional[str] = None,
         timeout: Optional[float] = None,
     ) -> SupportedDocumentsResponse:
-        """GET /v3/services/supported_documents (spec §6.14). No auth."""
+        """GET /v3/services/supported_documents. No auth."""
         response = self._transport.send(
             operations.supported_documents(continent, country_code, locale),
             timeout=timeout,
@@ -442,7 +442,7 @@ class ServicesResource(_Resource):
     def id_status(
         self, *, country: str, id_type: str, timeout: Optional[float] = None
     ) -> IdStatusResponse:
-        """GET /v3/services/id_status (spec §6.15). Token required."""
+        """GET /v3/services/id_status. Token required."""
         response = self._transport.send(
             operations.id_status(country, id_type), timeout=timeout
         )
@@ -462,7 +462,7 @@ def _liveness(values: Any) -> Any:
 
 
 class Client:
-    """The Smile ID V3 client (spec §2.1, §4).
+    """The Smile ID V3 client.
 
     Construct with a partner_id and api_key; everything else has a default.
     Usable as a context manager to close the underlying HTTP client.

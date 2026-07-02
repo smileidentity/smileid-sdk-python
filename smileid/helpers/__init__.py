@@ -1,4 +1,4 @@
-"""Hand-written helpers (spec §3): builders, validation and the poll helper."""
+"""Hand-written helpers: builders, validation and the poll helper."""
 
 from smileid.helpers.consent import Consent
 from smileid.helpers.fraud import FRAUD_REASONS, validate_fraud_report

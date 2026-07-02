@@ -1,4 +1,4 @@
-"""Matrix item 6: client-side validation (spec §5.1, §6.6, §6.11)."""
+"""Matrix item 6: client-side validation."""
 
 from __future__ import annotations
 

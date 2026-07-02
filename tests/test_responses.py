@@ -1,4 +1,4 @@
-"""Matrix item 5: response parsing and AcceptedResponse normalization (spec §5.2)."""
+"""Matrix item 5: response parsing and AcceptedResponse normalization."""
 
 from __future__ import annotations
 

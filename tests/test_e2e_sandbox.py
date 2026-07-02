@@ -1,4 +1,4 @@
-"""Matrix item 8: end-to-end sandbox Enhanced KYC (spec §11 gate item 5).
+"""Matrix item 8: end-to-end sandbox Enhanced KYC.
 
 Requires real sandbox credentials via the SMILE_PARTNER_ID and SMILE_API_KEY
 environment variables. Skips cleanly when they are not set. Credential values

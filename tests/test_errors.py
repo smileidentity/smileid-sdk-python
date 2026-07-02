@@ -1,4 +1,4 @@
-"""Matrix item 4: error hierarchy over both wire shapes (spec §7)."""
+"""Matrix item 4: error hierarchy over both wire shapes."""
 
 from __future__ import annotations
 
@@ -116,7 +116,7 @@ def test_non_json_body_falls_back_to_reason_phrase(
 def test_retrieve_404_returns_not_found_jobstatus_not_error(
     respx_mock: Any, mock_token: Any
 ) -> None:
-    """spec §6.8: 404 from status returns a JobStatus, never NotFoundError."""
+    """404 from status returns a JobStatus, never NotFoundError."""
     respx_mock.get(f"{BASE_URL}/v3/status/job_missing").mock(
         return_value=httpx.Response(
             404,

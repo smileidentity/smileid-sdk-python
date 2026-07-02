@@ -1,4 +1,4 @@
-"""Wire response models (spec §5.2, §6). Field names are verbatim snake_case.
+"""Wire response models. Field names are verbatim snake_case.
 
 All models ignore unknown fields so that additive backend changes never break
 deserialization.
@@ -18,7 +18,7 @@ class _WireModel(BaseModel):
 
 
 class AcceptedResponse(_WireModel):
-    """Entry-endpoint 202 response (spec §5.2).
+    """Entry-endpoint 202 response.
 
     ``status`` differs by endpoint (``Accepted`` vs ``accepted``); use
     :pyattr:`is_accepted` rather than comparing the raw string.
@@ -37,7 +37,7 @@ class AcceptedResponse(_WireModel):
 
 
 class JobStatus(_WireModel):
-    """GET /v3/status response (spec §5.2, §6.8).
+    """GET /v3/status response.
 
     ``status`` is one of ``complete``, ``processing`` or ``not_found``.
     """
@@ -61,7 +61,7 @@ class JobStatus(_WireModel):
 
 
 class ReplayCallbackResponse(_WireModel):
-    """POST /v3/replay/{job_id} response (spec §6.10)."""
+    """POST /v3/replay/{job_id} response."""
 
     status: str
     job_id: Optional[str] = None
@@ -70,7 +70,7 @@ class ReplayCallbackResponse(_WireModel):
 
 
 class ReportUserFraudResponse(_WireModel):
-    """POST /v3/users/{user_id}/report_fraud response (spec §6.11)."""
+    """POST /v3/users/{user_id}/report_fraud response."""
 
     status: str
     message: Optional[str] = None

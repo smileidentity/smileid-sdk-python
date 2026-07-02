@@ -1,7 +1,7 @@
 """Shared test fixtures and helpers.
 
 All HTTP is mocked with respx; no real network calls are made. Golden values
-follow spec §6 (fake IDs, partner id 1234, john@example.com).
+follow (fake IDs, partner id 1234, john@example.com).
 """
 
 from __future__ import annotations

@@ -1,4 +1,4 @@
-"""user_details model and client-side validation (spec §5.1).
+"""user_details model and client-side validation.
 
 At least one of ``email`` / ``phone_number`` MUST be present; enforced before a
 request is sent. Serialized as a JSON part named ``user_details``.
@@ -14,7 +14,7 @@ from smileid.errors import ValidationError
 
 @dataclass
 class UserDetails:
-    """Consumer-stated PII (spec §5.1). Prefer passing this or a plain dict."""
+    """Consumer-stated PII. Prefer passing this or a plain dict."""
 
     given_names: str
     last_name: str
@@ -31,7 +31,7 @@ class UserDetails:
 
 
 def normalize_user_details(value: Union["UserDetails", dict]) -> dict:
-    """Validate and return the wire dict for user_details (spec §5.1).
+    """Validate and return the wire dict for user_details.
 
     Raises :class:`ValidationError` when required fields are missing or when
     neither email nor phone_number is provided.

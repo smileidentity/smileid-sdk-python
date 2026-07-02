@@ -1,4 +1,4 @@
-"""Binary input normalization for multipart parts (spec §5.3, §8).
+"""Binary input normalization for multipart parts.
 
 Binary inputs accept a file path, a bytes buffer, or a file-like object, and are
 normalized to ``(filename, bytes, content_type)`` tuples.

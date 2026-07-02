@@ -1,4 +1,4 @@
-"""Fraud-report validation (spec §6.11)."""
+"""Fraud-report validation."""
 
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ def validate_fraud_report(
     reason: Optional[str],
     notes: Optional[str],
 ) -> None:
-    """Enforce the conditional fraud-report rules before sending (spec §6.11).
+    """Enforce the conditional fraud-report rules before sending.
 
     - ``reason`` is required and must be a known value when ``is_fraud`` is true.
     - ``notes`` is required when ``is_fraud`` is false OR when ``reason`` is

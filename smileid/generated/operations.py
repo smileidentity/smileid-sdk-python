@@ -1,8 +1,8 @@
-"""Thin per-operation request builders (spec §4, §6).
+"""Thin per-operation request builders.
 
 Each function maps typed parameters to a wire :class:`Request` — assigning every
 field to its destination (path / query / header / body scalar / body JSON part /
-multipart binary). The hand-written transport (spec §2.2) executes the request.
+multipart binary). The hand-written transport executes the request.
 
 Binary inputs reach these builders already normalized to ``(filename, bytes,
 content_type)`` tuples by ``smileid.helpers.multipart``.
@@ -20,7 +20,7 @@ BinaryPart = Tuple[str, bytes, str]
 
 @dataclass
 class Request:
-    """Language-neutral description of one HTTP request (spec §2A build_request)."""
+    """Language-neutral description of one HTTP request."""
 
     method: str
     path: str
@@ -67,7 +67,7 @@ def _add_binary_array(req: Request, name: str, parts: Optional[List[BinaryPart]]
 
 
 def token(partner_id: str, api_key: str) -> Request:
-    """POST /v3/token — internal. Lowercase headers, no body (spec §6.0)."""
+    """POST /v3/token — internal. Lowercase headers, no body."""
     return Request(
         method="POST",
         path="/v3/token",
@@ -93,7 +93,7 @@ def enhanced_kyc(
     metadata: Optional[list] = None,
     user_id: Optional[str] = None,
 ) -> Request:
-    """POST /v3/enhanced_kyc (spec §6.1). No Partner-ID header; user_id in header."""
+    """POST /v3/enhanced_kyc. No Partner-ID header; user_id in header."""
     req = Request(
         method="POST",
         path="/v3/enhanced_kyc",
@@ -130,7 +130,7 @@ def document_verification(
     metadata: Optional[list] = None,
     user_id: Optional[str] = None,
 ) -> Request:
-    """POST /v3/document_verification (spec §6.2). Partner-ID header required."""
+    """POST /v3/document_verification. Partner-ID header required."""
     req = Request(
         method="POST",
         path="/v3/document_verification",
@@ -169,7 +169,7 @@ def enhanced_document_verification(
     metadata: Optional[list] = None,
     user_id: Optional[str] = None,
 ) -> Request:
-    """POST /v3/enhanced_document_verification (spec §6.3). id_type required."""
+    """POST /v3/enhanced_document_verification. id_type required."""
     req = document_verification(
         selfie_image=selfie_image,
         liveness_images=liveness_images,
@@ -203,7 +203,7 @@ def biometric_kyc(
     metadata: Optional[list] = None,
     user_id: Optional[str] = None,
 ) -> Request:
-    """POST /v3/biometric_kyc (spec §6.4). Partner-ID header required."""
+    """POST /v3/biometric_kyc. Partner-ID header required."""
     req = Request(
         method="POST",
         path="/v3/biometric_kyc",
@@ -240,7 +240,7 @@ def registration(
     metadata: Optional[list] = None,
     user_id: Optional[str] = None,
 ) -> Request:
-    """POST /v3/registration (spec §6.5). No Partner-ID header; user_id in header."""
+    """POST /v3/registration. No Partner-ID header; user_id in header."""
     req = Request(
         method="POST",
         path="/v3/registration",
@@ -274,7 +274,7 @@ def authentication(
     partner_params: Optional[dict] = None,
     metadata: Optional[list] = None,
 ) -> Request:
-    """POST /v3/authentication (spec §6.6). user_id in BODY (required)."""
+    """POST /v3/authentication. user_id in BODY (required)."""
     req = Request(
         method="POST",
         path="/v3/authentication",
@@ -310,7 +310,7 @@ def compare(
     partner_params: Optional[dict] = None,
     metadata: Optional[list] = None,
 ) -> Request:
-    """POST /v3/compare (spec §6.7). user_id optional in BODY."""
+    """POST /v3/compare. user_id optional in BODY."""
     req = Request(
         method="POST",
         path="/v3/compare",
@@ -334,7 +334,7 @@ def compare(
 
 
 def get_status(job_id: str) -> Request:
-    """GET /v3/status/{jobId} (spec §6.8). 404 returns a JobStatus body."""
+    """GET /v3/status/{jobId}. 404 returns a JobStatus body."""
     return Request(
         method="GET",
         path=f"/v3/status/{job_id}",
@@ -345,7 +345,7 @@ def get_status(job_id: str) -> Request:
 
 
 def replay(job_id: str, callback_url: Optional[str] = None) -> Request:
-    """POST /v3/replay/{job_id} (spec §6.10). JSON body, NOT multipart."""
+    """POST /v3/replay/{job_id}. JSON body, NOT multipart."""
     return Request(
         method="POST",
         path=f"/v3/replay/{job_id}",
@@ -364,7 +364,7 @@ def report_fraud(
     reason: Optional[str] = None,
     notes: Optional[str] = None,
 ) -> Request:
-    """POST /v3/users/{user_id}/report_fraud (spec §6.11). Multipart."""
+    """POST /v3/users/{user_id}/report_fraud. Multipart."""
     req = Request(
         method="POST",
         path=f"/v3/users/{user_id}/report_fraud",
@@ -380,7 +380,7 @@ def report_fraud(
 
 
 def bank_codes(country: Optional[str] = None) -> Request:
-    """GET /v3/services/bank_codes (spec §6.12). No auth."""
+    """GET /v3/services/bank_codes. No auth."""
     query = {"country": country} if country else {}
     return Request(
         method="GET",
@@ -392,7 +392,7 @@ def bank_codes(country: Optional[str] = None) -> Request:
 
 
 def supported_id_types(country: Optional[str] = None) -> Request:
-    """GET /v3/services/supported_id_types (spec §6.13). No auth."""
+    """GET /v3/services/supported_id_types. No auth."""
     query = {"country": country} if country else {}
     return Request(
         method="GET",
@@ -408,7 +408,7 @@ def supported_documents(
     country_code: Optional[str] = None,
     locale: Optional[str] = None,
 ) -> Request:
-    """GET /v3/services/supported_documents (spec §6.14). No auth."""
+    """GET /v3/services/supported_documents. No auth."""
     query: Dict[str, str] = {}
     if continent:
         query["continent"] = continent
@@ -426,7 +426,7 @@ def supported_documents(
 
 
 def id_status(country: str, id_type: str) -> Request:
-    """GET /v3/services/id_status (spec §6.15). Token required."""
+    """GET /v3/services/id_status. Token required."""
     return Request(
         method="GET",
         path="/v3/services/id_status",
