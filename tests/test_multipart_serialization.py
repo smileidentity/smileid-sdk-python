@@ -125,7 +125,52 @@ def test_document_back_png_detected(respx_mock: Any, mock_token: Any) -> None:
     parts = parse_multipart(route.calls.last.request)
     document = next(p for p in parts if p["name"] == "document")
     assert document["content_type"] == "image/png"
-    assert any(p["name"] == "document_back" for p in parts)
+    document_back = next(p for p in parts if p["name"] == "document_back")
+    assert document_back["content_type"] == "image/png"
+
+
+def test_selfie_and_liveness_always_jpeg_even_for_png_bytes(
+    respx_mock: Any, mock_token: Any
+) -> None:
+    """PNG is only valid for document / document_back; selfie-family inputs
+    must always be sent as image/jpeg."""
+    route = respx_mock.post(f"{BASE_URL}/v3/document_verification").mock(
+        return_value=httpx.Response(202, json=ACCEPTED_LOWER)
+    )
+    png = b"\x89PNG\r\n\x1a\n" + b"body"
+    client = make_client()
+    client.documents.verify(
+        selfie_image=png,
+        liveness_images=[png] * 6,
+        document=JPEG_BYTES,
+        consent=consent_dict(),
+        country="NG",
+        user_details=user_details_dict(),
+    )
+    parts = parse_multipart(route.calls.last.request)
+    selfie = next(p for p in parts if p["name"] == "selfie_image")
+    assert selfie["content_type"] == "image/jpeg"
+    for part in parts:
+        if part["name"] == "liveness_images":
+            assert part["content_type"] == "image/jpeg"
+
+
+def test_comparison_image_always_jpeg(respx_mock: Any, mock_token: Any) -> None:
+    route = respx_mock.post(f"{BASE_URL}/v3/compare").mock(
+        return_value=httpx.Response(202, json=ACCEPTED)
+    )
+    png = b"\x89PNG\r\n\x1a\n" + b"body"
+    client = make_client()
+    client.biometric.compare(
+        selfie_image=JPEG_BYTES,
+        comparison_image=png,
+        comparison_image_type="ID_PHOTO",
+        consent=consent_dict(),
+        user_details=user_details_dict(),
+    )
+    parts = parse_multipart(route.calls.last.request)
+    comparison = next(p for p in parts if p["name"] == "comparison_image")
+    assert comparison["content_type"] == "image/jpeg"
 
 
 def test_authentication_user_id_in_body_not_header(

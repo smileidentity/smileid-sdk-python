@@ -450,11 +450,13 @@ class ServicesResource(_Resource):
 
 
 def _selfie(value: Any, default_filename: str = "selfie.jpg") -> Any:
+    """Selfie-family inputs (selfie, comparison, liveness) are always JPEG."""
     return normalize_binary(value, default_filename=default_filename)
 
 
 def _document(value: Any, default_filename: str) -> Any:
-    return normalize_binary(value, default_filename=default_filename)
+    """document / document_back are the only fields that may be PNG."""
+    return normalize_binary(value, default_filename=default_filename, allow_png=True)
 
 
 def _liveness(values: Any) -> Any:
