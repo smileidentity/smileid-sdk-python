@@ -9,7 +9,7 @@ The API surface (endpoints, request and response shapes) is defined by the OpenA
 ## Layout
 
 - `smileid/generated/` — generator-owned code, produced from the OpenAPI specs. Do not hand-edit files here once the generator is wired up.
-- `smileid/client/` — hand-written client code (configuration, request signing, transport).
+- `smileid/client/` — hand-written client code (configuration, auth, transport).
 - `smileid/errors/` — hand-written error types.
 - `smileid/helpers/` — hand-written convenience helpers.
 

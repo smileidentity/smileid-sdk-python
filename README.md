@@ -52,7 +52,6 @@ Callback URLs must also be `https`. The SDK validates `default_callback_url` whe
 | `default_callback_url` | unset | Used when a call omits `callback_url`; must be https |
 | `timeout` | 30 seconds | Per-request total timeout; each method also accepts a `timeout` override |
 | `max_retries` | 2 | Retries for idempotent operations only (see Retries below) |
-| `partner_secret` | unset | Enables HMAC request signing when set (see HMAC signing below) |
 | `http_client` | SDK default | Inject your own `httpx.Client` for testing or proxies |
 
 ### Binary inputs
@@ -328,10 +327,6 @@ Submission calls (verification, enrollment, authentication, compare, replay, fra
 ## Telemetry
 
 Every request carries three telemetry headers: `SmileID-Source-SDK`, `SmileID-Source-SDK-Version` and `User-Agent`. They identify the SDK and its version for observability. They are never used for authentication and carry no personal data.
-
-## HMAC request signing
-
-Off by default. When you configure `partner_secret`, the SDK signs each request body and adds `SmileID-Timestamp` and `SmileID-Request-Signature` headers. The signature construction is provisional and must be confirmed with Smile ID before you rely on it in production.
 
 ## Licence
 
