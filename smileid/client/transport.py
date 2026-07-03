@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import platform
 import random
+import re
 import time
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
@@ -19,7 +20,13 @@ import httpx
 from smileid._version import __version__
 from smileid.client.auth import TokenManager, iso8601_millis_utc, sign_request
 from smileid.client.config import ClientConfig
-from smileid.errors import APIError, ConnectionError, parse_error
+from smileid.errors import (
+    ConnectionError,
+    UnexpectedResponseError,
+    ValidationError,
+    parse_error,
+    parse_success_json,
+)
 from smileid.generated import operations
 from smileid.generated.operations import Request
 
@@ -67,14 +74,15 @@ class Transport:
         response = self._send_with_retries(request, timeout=None)
         if response.status_code != 200:
             raise parse_error(response)
-        try:
-            return str(response.json()["token"])
-        except (KeyError, ValueError) as exc:
-            raise APIError(
+        body = parse_success_json(response)
+        token = body.get("token")
+        if not isinstance(token, str) or not token:
+            raise UnexpectedResponseError(
                 "token response did not contain a 'token' field",
                 status_code=response.status_code,
                 raw_body=response.text,
-            ) from exc
+            )
+        return token
 
     # -- public send -------------------------------------------------------
 
@@ -195,6 +203,7 @@ class Transport:
         Every part is routed through httpx's ``files`` list so the body is
         always ``multipart/form-data`` (even scalar-only bodies), part order is
         preserved, and repeated ``liveness_images`` stay as separate parts.
+        Filenames and content types are sanitized against header injection.
         """
         files: List[Tuple[str, tuple]] = []
         for name, value in request.text_parts:
@@ -202,5 +211,28 @@ class Transport:
         for name, json_text in request.json_parts:
             files.append((name, (None, json_text.encode("utf-8"), "application/json")))
         for name, filename, data, content_type in request.binary_parts:
-            files.append((name, (filename, data, content_type)))
+            files.append(
+                (name, (_sanitize_filename(filename), data, _check_media_type(content_type)))
+            )
         return files
+
+
+# Conservative allow-list for multipart part headers: a filename must not be
+# able to break out of its Content-Disposition parameter, and a content type
+# must be a plain media type. Defense in depth — content types are derived
+# internally today, and httpx additionally escapes filenames.
+_FILENAME_UNSAFE_RE = re.compile(r'[\r\n"\\;]')
+_MEDIA_TYPE_RE = re.compile(r"^[!#$&^_.+\-\w]+/[!#$&^_.+\-\w]+$")
+
+
+def _sanitize_filename(filename: str) -> str:
+    """Strip CR/LF, quotes, backslashes and separators from a part filename."""
+    cleaned = _FILENAME_UNSAFE_RE.sub("_", filename)
+    return cleaned or "upload"
+
+
+def _check_media_type(content_type: str) -> str:
+    """Reject any part content type that is not a plain media type."""
+    if not _MEDIA_TYPE_RE.match(content_type):
+        raise ValidationError(f"invalid part content type: {content_type!r}")
+    return content_type
