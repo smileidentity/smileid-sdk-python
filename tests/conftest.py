@@ -14,7 +14,7 @@ from typing import Any, Dict, List
 import httpx
 import pytest
 
-import smileid
+import usesmileid
 
 BASE_URL = "https://testapi.smileidentity.com"
 
@@ -31,14 +31,14 @@ def make_jwt(exp_offset: int = 3600) -> str:
     return f"{header}.{payload}.signature"
 
 
-def make_client(**overrides: Any) -> smileid.Client:
+def make_client(**overrides: Any) -> usesmileid.Client:
     kwargs: Dict[str, Any] = {
         "partner_id": "1234",
         "api_key": "test-api-key",
         "environment": "sandbox",
     }
     kwargs.update(overrides)
-    return smileid.Client(**kwargs)
+    return usesmileid.Client(**kwargs)
 
 
 def parse_multipart(request: httpx.Request) -> List[Dict[str, Any]]:
@@ -91,7 +91,7 @@ def user_details_dict() -> dict:
 @pytest.fixture(autouse=True)
 def _no_retry_sleep(monkeypatch: pytest.MonkeyPatch) -> None:
     """Make retry backoff instantaneous so retry tests run fast."""
-    monkeypatch.setattr("smileid.client.transport.time.sleep", lambda *_a, **_k: None)
+    monkeypatch.setattr("usesmileid.client.transport.time.sleep", lambda *_a, **_k: None)
 
 
 @pytest.fixture

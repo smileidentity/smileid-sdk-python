@@ -8,13 +8,13 @@ from typing import Any
 import httpx
 import pytest
 
-import smileid
+import usesmileid
 from tests.conftest import BASE_URL, consent_dict, make_client, make_jwt, user_details_dict
 
 ACCEPTED = {"status": "Accepted", "job_id": "job_x", "user_id": "user_x"}
 
 
-def _enhanced_kyc(client: smileid.Client) -> Any:
+def _enhanced_kyc(client: usesmileid.Client) -> Any:
     return client.enhanced_kyc.verify(
         country="NG",
         id_type="NIN",
@@ -77,7 +77,7 @@ def test_second_401_raises_authentication_error(respx_mock: Any) -> None:
         return_value=httpx.Response(401, json={"status": "Unauthorized", "message": "nope"})
     )
     client = make_client()
-    with pytest.raises(smileid.errors.AuthenticationError):
+    with pytest.raises(usesmileid.errors.AuthenticationError):
         _enhanced_kyc(client)
     assert kyc_route.call_count == 2  # tried once, refreshed, tried once more
 

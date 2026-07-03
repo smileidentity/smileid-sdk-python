@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-import smileid
+import usesmileid
 
 _PARTNER_ID = os.environ.get("SMILE_PARTNER_ID")
 _API_KEY = os.environ.get("SMILE_API_KEY")
@@ -25,7 +25,7 @@ pytestmark = pytest.mark.skipif(
 
 def test_sandbox_enhanced_kyc_completes() -> None:
     assert _PARTNER_ID is not None and _API_KEY is not None
-    with smileid.Client(
+    with usesmileid.Client(
         partner_id=_PARTNER_ID, api_key=_API_KEY, environment="sandbox"
     ) as client:
         accepted = client.enhanced_kyc.verify(
@@ -39,7 +39,7 @@ def test_sandbox_enhanced_kyc_completes() -> None:
                 "last_name": "Clearwater",
                 "email": "amina.clearwater@example.com",
             },
-            consent=smileid.Consent.granted(
+            consent=usesmileid.Consent.granted(
                 granted_at=datetime.now(timezone.utc),
                 notice_language="EN",
                 notice_privacy_policy_url="https://example.com/privacy",

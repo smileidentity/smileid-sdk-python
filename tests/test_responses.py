@@ -6,8 +6,8 @@ from typing import Any
 
 import httpx
 
-from smileid.generated.models import AcceptedResponse
 from tests.conftest import BASE_URL, consent_dict, make_client, user_details_dict
+from usesmileid.generated.models import AcceptedResponse
 
 
 def test_is_accepted_normalizes_capitalized_status() -> None:

@@ -12,11 +12,11 @@ from typing import Any, List, Optional, Type, Union
 
 import httpx
 
-from smileid.client.config import ClientConfig, validate_callback_url
-from smileid.client.transport import Transport
-from smileid.errors import ValidationError, parse_success_json
-from smileid.generated import operations
-from smileid.generated.models import (
+from usesmileid.client.config import ClientConfig, validate_callback_url
+from usesmileid.client.transport import Transport
+from usesmileid.errors import ValidationError, parse_success_json
+from usesmileid.generated import operations
+from usesmileid.generated.models import (
     AcceptedResponse,
     BankCodesResponse,
     IdStatusResponse,
@@ -26,11 +26,11 @@ from smileid.generated.models import (
     SupportedDocumentsResponse,
     SupportedIdTypesResponse,
 )
-from smileid.helpers.consent import Consent
-from smileid.helpers.fraud import validate_fraud_report
-from smileid.helpers.multipart import normalize_binary, normalize_binary_list
-from smileid.helpers.polling import wait_until_complete
-from smileid.helpers.user_details import UserDetails, normalize_user_details
+from usesmileid.helpers.consent import Consent
+from usesmileid.helpers.fraud import validate_fraud_report
+from usesmileid.helpers.multipart import normalize_binary, normalize_binary_list
+from usesmileid.helpers.polling import wait_until_complete
+from usesmileid.helpers.user_details import UserDetails, normalize_user_details
 
 ConsentInput = Union[Consent, dict]
 UserDetailsInput = Union[UserDetails, dict]

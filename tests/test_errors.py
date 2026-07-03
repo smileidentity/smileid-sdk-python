@@ -7,11 +7,11 @@ from typing import Any
 import httpx
 import pytest
 
-import smileid
+import usesmileid
 from tests.conftest import BASE_URL, consent_dict, make_client, user_details_dict
 
 
-def _verify(client: smileid.Client) -> Any:
+def _verify(client: usesmileid.Client) -> Any:
     return client.enhanced_kyc.verify(
         country="NG",
         id_type="NIN",
@@ -32,7 +32,7 @@ def test_400_status_message_shape(respx_mock: Any, mock_token: Any) -> None:
         )
     )
     client = make_client()
-    with pytest.raises(smileid.errors.InvalidRequestError) as excinfo:
+    with pytest.raises(usesmileid.errors.InvalidRequestError) as excinfo:
         _verify(client)
     err = excinfo.value
     assert err.status_code == 400
@@ -50,7 +50,7 @@ def test_402_payment_required(respx_mock: Any, mock_token: Any) -> None:
         )
     )
     client = make_client()
-    with pytest.raises(smileid.errors.PaymentRequiredError) as excinfo:
+    with pytest.raises(usesmileid.errors.PaymentRequiredError) as excinfo:
         _verify(client)
     assert excinfo.value.message == "Insufficient wallet balance."
 
@@ -63,7 +63,7 @@ def test_413_payload_too_large(respx_mock: Any, mock_token: Any) -> None:
         )
     )
     client = make_client()
-    with pytest.raises(smileid.errors.PayloadTooLargeError):
+    with pytest.raises(usesmileid.errors.PayloadTooLargeError):
         _verify(client)
 
 
@@ -76,7 +76,7 @@ def test_services_error_code_shape(respx_mock: Any) -> None:
         )
     )
     client = make_client()
-    with pytest.raises(smileid.errors.PermissionError) as excinfo:
+    with pytest.raises(usesmileid.errors.PermissionError) as excinfo:
         client.services.bank_codes()
     err = excinfo.value
     assert err.status_code == 403
@@ -93,7 +93,7 @@ def test_id_status_message_status_ordering(respx_mock: Any, mock_token: Any) -> 
         )
     )
     client = make_client()
-    with pytest.raises(smileid.errors.InvalidRequestError) as excinfo:
+    with pytest.raises(usesmileid.errors.InvalidRequestError) as excinfo:
         client.services.id_status(country="", id_type="NIN")
     assert excinfo.value.message == '"country" is required'
     assert excinfo.value.status == "Bad Request"
@@ -106,7 +106,7 @@ def test_non_json_body_falls_back_to_reason_phrase(
         return_value=httpx.Response(502, text="<html>Bad Gateway</html>")
     )
     client = make_client()
-    with pytest.raises(smileid.errors.APIError) as excinfo:
+    with pytest.raises(usesmileid.errors.APIError) as excinfo:
         _verify(client)
     assert excinfo.value.status_code == 502
     assert excinfo.value.message  # falls back to the reason phrase
@@ -143,7 +143,7 @@ def test_replay_404_still_raises_not_found(respx_mock: Any, mock_token: Any) -> 
         )
     )
     client = make_client()
-    with pytest.raises(smileid.errors.NotFoundError):
+    with pytest.raises(usesmileid.errors.NotFoundError):
         client.verifications.replay("job_missing")
 
 
@@ -154,24 +154,24 @@ def test_429_rate_limit(respx_mock: Any, mock_token: Any) -> None:
         )
     )
     client = make_client()
-    with pytest.raises(smileid.errors.RateLimitError):
+    with pytest.raises(usesmileid.errors.RateLimitError):
         _verify(client)
 
 
 def test_error_hierarchy_all_subclass_base() -> None:
     for klass in (
-        smileid.errors.InvalidRequestError,
-        smileid.errors.AuthenticationError,
-        smileid.errors.PaymentRequiredError,
-        smileid.errors.PermissionError,
-        smileid.errors.NotFoundError,
-        smileid.errors.ConflictError,
-        smileid.errors.PayloadTooLargeError,
-        smileid.errors.RateLimitError,
-        smileid.errors.APIError,
-        smileid.errors.ConnectionError,
-        smileid.errors.TimeoutError,
-        smileid.errors.ValidationError,
+        usesmileid.errors.InvalidRequestError,
+        usesmileid.errors.AuthenticationError,
+        usesmileid.errors.PaymentRequiredError,
+        usesmileid.errors.PermissionError,
+        usesmileid.errors.NotFoundError,
+        usesmileid.errors.ConflictError,
+        usesmileid.errors.PayloadTooLargeError,
+        usesmileid.errors.RateLimitError,
+        usesmileid.errors.APIError,
+        usesmileid.errors.ConnectionError,
+        usesmileid.errors.TimeoutError,
+        usesmileid.errors.ValidationError,
     ):
-        assert issubclass(klass, smileid.errors.SmileIDError)
-    assert issubclass(smileid.errors.ValidationError, smileid.errors.InvalidRequestError)
+        assert issubclass(klass, usesmileid.errors.SmileIDError)
+    assert issubclass(usesmileid.errors.ValidationError, usesmileid.errors.InvalidRequestError)

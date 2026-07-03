@@ -6,14 +6,14 @@ from typing import Any
 
 import pytest
 
-import smileid
-from smileid.helpers.user_details import normalize_user_details
+import usesmileid
 from tests.conftest import JPEG_BYTES, LIVENESS, consent_dict, make_client
+from usesmileid.helpers.user_details import normalize_user_details
 
 
 def test_user_details_requires_email_or_phone(respx_mock: Any, mock_token: Any) -> None:
     client = make_client()
-    with pytest.raises(smileid.errors.ValidationError):
+    with pytest.raises(usesmileid.errors.ValidationError):
         client.enhanced_kyc.verify(
             country="NG",
             id_type="NIN",
@@ -40,15 +40,15 @@ def test_user_details_phone_only_ok() -> None:
 
 
 def test_user_details_missing_names_rejected() -> None:
-    with pytest.raises(smileid.errors.ValidationError):
+    with pytest.raises(usesmileid.errors.ValidationError):
         normalize_user_details({"last_name": "Doe", "email": "john@example.com"})
-    with pytest.raises(smileid.errors.ValidationError):
+    with pytest.raises(usesmileid.errors.ValidationError):
         normalize_user_details({"given_names": "John", "email": "john@example.com"})
 
 
 def test_flag_fraud_requires_reason(respx_mock: Any, mock_token: Any) -> None:
     client = make_client()
-    with pytest.raises(smileid.errors.ValidationError):
+    with pytest.raises(usesmileid.errors.ValidationError):
         client.users.report_fraud(
             "user-123", is_fraud=True, reported_by="risk@partner.example"
         )
@@ -57,7 +57,7 @@ def test_flag_fraud_requires_reason(respx_mock: Any, mock_token: Any) -> None:
 
 def test_fraud_reason_other_requires_notes(respx_mock: Any, mock_token: Any) -> None:
     client = make_client()
-    with pytest.raises(smileid.errors.ValidationError):
+    with pytest.raises(usesmileid.errors.ValidationError):
         client.users.flag_fraud(
             "user-123", reason="OTHER", reported_by="risk@partner.example"
         )
@@ -65,7 +65,7 @@ def test_fraud_reason_other_requires_notes(respx_mock: Any, mock_token: Any) -> 
 
 def test_clear_fraud_requires_notes(respx_mock: Any, mock_token: Any) -> None:
     client = make_client()
-    with pytest.raises(smileid.errors.ValidationError):
+    with pytest.raises(usesmileid.errors.ValidationError):
         client.users.report_fraud(
             "user-123", is_fraud=False, reported_by="risk@partner.example"
         )
@@ -73,7 +73,7 @@ def test_clear_fraud_requires_notes(respx_mock: Any, mock_token: Any) -> None:
 
 def test_fraud_unknown_reason_rejected(respx_mock: Any, mock_token: Any) -> None:
     client = make_client()
-    with pytest.raises(smileid.errors.ValidationError):
+    with pytest.raises(usesmileid.errors.ValidationError):
         client.users.flag_fraud(
             "user-123", reason="MADE_UP", reported_by="risk@partner.example"
         )
@@ -81,7 +81,7 @@ def test_fraud_unknown_reason_rejected(respx_mock: Any, mock_token: Any) -> None
 
 def test_fraud_notes_length_limit(respx_mock: Any, mock_token: Any) -> None:
     client = make_client()
-    with pytest.raises(smileid.errors.ValidationError):
+    with pytest.raises(usesmileid.errors.ValidationError):
         client.users.clear_fraud(
             "user-123", notes="x" * 501, reported_by="risk@partner.example"
         )
@@ -92,11 +92,11 @@ def test_authenticate_requires_images_unless_enrolled(
 ) -> None:
     client = make_client()
     user_details = {"given_names": "John", "last_name": "Doe", "email": "john@example.com"}
-    with pytest.raises(smileid.errors.ValidationError):
+    with pytest.raises(usesmileid.errors.ValidationError):
         client.biometric.authenticate(
             user_id="user-1", consent=consent_dict(), user_details=user_details
         )
-    with pytest.raises(smileid.errors.ValidationError):
+    with pytest.raises(usesmileid.errors.ValidationError):
         client.biometric.authenticate(
             user_id="user-1",
             selfie_image=JPEG_BYTES,  # liveness missing
@@ -149,17 +149,17 @@ def test_authenticate_with_images_sends_them(respx_mock: Any, mock_token: Any) -
 
 
 def test_client_config_validation() -> None:
-    with pytest.raises(smileid.errors.ValidationError):
-        smileid.Client(partner_id="0123", api_key="k")  # leading zero
-    with pytest.raises(smileid.errors.ValidationError):
-        smileid.Client(partner_id="1234", api_key="")
-    with pytest.raises(smileid.errors.ValidationError):
-        smileid.Client(partner_id="1234", api_key="k", environment="staging")
+    with pytest.raises(usesmileid.errors.ValidationError):
+        usesmileid.Client(partner_id="0123", api_key="k")  # leading zero
+    with pytest.raises(usesmileid.errors.ValidationError):
+        usesmileid.Client(partner_id="1234", api_key="")
+    with pytest.raises(usesmileid.errors.ValidationError):
+        usesmileid.Client(partner_id="1234", api_key="k", environment="staging")
 
 
 def test_verify_enhanced_requires_id_type(respx_mock: Any, mock_token: Any) -> None:
     client = make_client()
-    with pytest.raises(smileid.errors.ValidationError):
+    with pytest.raises(usesmileid.errors.ValidationError):
         client.documents.verify_enhanced(
             selfie_image=JPEG_BYTES,
             liveness_images=LIVENESS,
