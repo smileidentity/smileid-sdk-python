@@ -18,7 +18,7 @@ from typing import List, Optional, Tuple
 import httpx
 
 from smileid._version import __version__
-from smileid.client.auth import TokenManager, iso8601_millis_utc, sign_request
+from smileid.client.auth import TokenManager
 from smileid.client.config import ClientConfig
 from smileid.errors import (
     ConnectionError,
@@ -185,16 +185,7 @@ class Transport:
         elif request.body_kind == "json" and request.json_body is not None:
             build_kwargs["json"] = request.json_body
 
-        prepared = self._client.build_request(request.method, url, **build_kwargs)
-
-        if self._config.signing_enabled and self._config.partner_secret:
-            body = prepared.read()
-            timestamp = iso8601_millis_utc()
-            prepared.headers["SmileID-Timestamp"] = timestamp
-            prepared.headers["SmileID-Request-Signature"] = sign_request(
-                self._config.partner_secret, timestamp, body
-            )
-        return prepared
+        return self._client.build_request(request.method, url, **build_kwargs)
 
     @staticmethod
     def _multipart_files(request: Request) -> List[Tuple[str, tuple]]:

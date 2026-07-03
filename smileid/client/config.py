@@ -49,7 +49,6 @@ class ClientConfig:
     partner_id: str
     api_key: str
     environment: Environment = "sandbox"
-    partner_secret: Optional[str] = None
     default_callback_url: Optional[str] = None
     base_url: Optional[str] = None
     timeout: float = 30.0
@@ -72,8 +71,3 @@ class ClientConfig:
         self.base_url = self.base_url.rstrip("/")
         if self.default_callback_url is not None:
             validate_callback_url(self.default_callback_url)
-
-    @property
-    def signing_enabled(self) -> bool:
-        """HMAC signing is enabled only when a partner_secret is configured."""
-        return bool(self.partner_secret)

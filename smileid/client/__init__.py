@@ -1,7 +1,7 @@
 """Hand-written client layer: configuration, transport, auth.
 
-This tree owns everything a code generator must not touch: the HTTP transport,
-the JWT lifecycle and the HMAC signing hook.
+This tree owns everything a code generator must not touch: the HTTP transport
+and the JWT lifecycle.
 """
 
 from smileid.client.client import Client
