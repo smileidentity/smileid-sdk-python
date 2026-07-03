@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from typing import Optional
+from urllib.parse import urlparse
 
 from smileid.errors import ValidationError
 
@@ -16,6 +17,26 @@ _BASE_URLS = {
 }
 
 _PARTNER_ID_RE = re.compile(r"^[1-9]\d*$")
+
+
+def validate_base_url(value: str) -> None:
+    """Require an absolute https URL with no query or fragment.
+
+    Deliberately strict, with no insecure escape hatch: partner credentials
+    and PII travel on every request.
+    """
+    parsed = urlparse(value)
+    if parsed.scheme != "https" or not parsed.netloc:
+        raise ValidationError(f"base_url must be an absolute https URL, got {value!r}")
+    if parsed.query or parsed.fragment:
+        raise ValidationError(f"base_url must not contain a query or fragment, got {value!r}")
+
+
+def validate_callback_url(value: str) -> None:
+    """Require callback URLs to be absolute https URLs."""
+    parsed = urlparse(value)
+    if parsed.scheme != "https" or not parsed.netloc:
+        raise ValidationError(f"callback_url must be an absolute https URL, got {value!r}")
 
 
 @dataclass
@@ -47,7 +68,10 @@ class ClientConfig:
             )
         if self.base_url is None:
             self.base_url = _BASE_URLS[self.environment]
+        validate_base_url(self.base_url)
         self.base_url = self.base_url.rstrip("/")
+        if self.default_callback_url is not None:
+            validate_callback_url(self.default_callback_url)
 
     @property
     def signing_enabled(self) -> bool:

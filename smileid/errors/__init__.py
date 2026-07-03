@@ -28,8 +28,10 @@ __all__ = [
     "APIError",
     "ConnectionError",
     "TimeoutError",
+    "UnexpectedResponseError",
     "error_class_for",
     "parse_error",
+    "parse_success_json",
 ]
 
 
@@ -103,6 +105,38 @@ class TimeoutError(SmileIDError):  # noqa: A001 - intentional public name
     """SDK-local timeout, raised by ``wait_until_complete``."""
 
 
+class UnexpectedResponseError(SmileIDError):
+    """A success (2xx) response whose body is not a JSON object."""
+
+
+def _request_id(response: "httpx.Response") -> Optional[str]:
+    return response.headers.get("x-request-id") or response.headers.get(
+        "smileid-request-id"
+    )
+
+
+def parse_success_json(response: "httpx.Response") -> "dict[str, Any]":
+    """Return the response body as a JSON object, or raise.
+
+    Raises :class:`UnexpectedResponseError` when a success-path body is not a
+    JSON object, with ``status_code``, ``raw_body`` and ``request_id``
+    populated.
+    """
+    raw_body = response.text
+    try:
+        parsed = json.loads(raw_body)
+    except (ValueError, TypeError):
+        parsed = None
+    if not isinstance(parsed, dict):
+        raise UnexpectedResponseError(
+            "expected a JSON object in the response body",
+            status_code=response.status_code,
+            request_id=_request_id(response),
+            raw_body=raw_body,
+        )
+    return parsed
+
+
 _STATUS_MAP = {
     400: InvalidRequestError,
     415: InvalidRequestError,
@@ -146,9 +180,7 @@ def parse_error(response: "httpx.Response") -> SmileIDError:
     message = body.get("message") or body.get("error") or response.reason_phrase
     code = body.get("code")
     status_text = body.get("status")
-    request_id = response.headers.get("x-request-id") or response.headers.get(
-        "smileid-request-id"
-    )
+    request_id = _request_id(response)
 
     klass = error_class_for(response.status_code)
     return klass(

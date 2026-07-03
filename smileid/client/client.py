@@ -12,9 +12,9 @@ from typing import Any, List, Optional, Type, Union
 
 import httpx
 
-from smileid.client.config import ClientConfig
+from smileid.client.config import ClientConfig, validate_callback_url
 from smileid.client.transport import Transport
-from smileid.errors import ValidationError
+from smileid.errors import ValidationError, parse_success_json
 from smileid.generated import operations
 from smileid.generated.models import (
     AcceptedResponse,
@@ -91,7 +91,7 @@ class EnhancedKycResource(_Resource):
             user_id=user_id,
         )
         response = self._transport.send(request, timeout=timeout)
-        return AcceptedResponse.model_validate(response.json())
+        return AcceptedResponse.model_validate(parse_success_json(response))
 
 
 class DocumentsResource(_Resource):
@@ -128,7 +128,7 @@ class DocumentsResource(_Resource):
             user_id=user_id,
         )
         response = self._transport.send(request, timeout=timeout)
-        return AcceptedResponse.model_validate(response.json())
+        return AcceptedResponse.model_validate(parse_success_json(response))
 
     def verify_enhanced(
         self,
@@ -165,7 +165,7 @@ class DocumentsResource(_Resource):
             user_id=user_id,
         )
         response = self._transport.send(request, timeout=timeout)
-        return AcceptedResponse.model_validate(response.json())
+        return AcceptedResponse.model_validate(parse_success_json(response))
 
 
 class BiometricKycResource(_Resource):
@@ -202,7 +202,7 @@ class BiometricKycResource(_Resource):
             user_id=user_id,
         )
         response = self._transport.send(request, timeout=timeout)
-        return AcceptedResponse.model_validate(response.json())
+        return AcceptedResponse.model_validate(parse_success_json(response))
 
 
 class BiometricResource(_Resource):
@@ -235,7 +235,7 @@ class BiometricResource(_Resource):
             user_id=user_id,
         )
         response = self._transport.send(request, timeout=timeout)
-        return AcceptedResponse.model_validate(response.json())
+        return AcceptedResponse.model_validate(parse_success_json(response))
 
     def authenticate(
         self,
@@ -272,7 +272,7 @@ class BiometricResource(_Resource):
             metadata=metadata,
         )
         response = self._transport.send(request, timeout=timeout)
-        return AcceptedResponse.model_validate(response.json())
+        return AcceptedResponse.model_validate(parse_success_json(response))
 
     def compare(
         self,
@@ -307,7 +307,7 @@ class BiometricResource(_Resource):
             metadata=metadata,
         )
         response = self._transport.send(request, timeout=timeout)
-        return AcceptedResponse.model_validate(response.json())
+        return AcceptedResponse.model_validate(parse_success_json(response))
 
 
 class VerificationsResource(_Resource):
@@ -315,7 +315,7 @@ class VerificationsResource(_Resource):
         """GET /v3/status/{jobId}. 404 returns a not_found JobStatus."""
         request = operations.get_status(job_id)
         response = self._transport.send(request, timeout=timeout)
-        return JobStatus.model_validate(response.json())
+        return JobStatus.model_validate(parse_success_json(response))
 
     def wait_until_complete(
         self,
@@ -344,7 +344,7 @@ class VerificationsResource(_Resource):
         """POST /v3/replay/{job_id}."""
         request = operations.replay(job_id, self._callback(callback_url))
         response = self._transport.send(request, timeout=timeout)
-        return ReplayCallbackResponse.model_validate(response.json())
+        return ReplayCallbackResponse.model_validate(parse_success_json(response))
 
 
 class UsersResource(_Resource):
@@ -368,7 +368,7 @@ class UsersResource(_Resource):
             notes=notes,
         )
         response = self._transport.send(request, timeout=timeout)
-        return ReportUserFraudResponse.model_validate(response.json())
+        return ReportUserFraudResponse.model_validate(parse_success_json(response))
 
     def flag_fraud(
         self,
@@ -413,7 +413,7 @@ class ServicesResource(_Resource):
     ) -> BankCodesResponse:
         """GET /v3/services/bank_codes. No auth."""
         response = self._transport.send(operations.bank_codes(country), timeout=timeout)
-        return BankCodesResponse.model_validate(response.json())
+        return BankCodesResponse.model_validate(parse_success_json(response))
 
     def supported_id_types(
         self, *, country: Optional[str] = None, timeout: Optional[float] = None
@@ -422,7 +422,7 @@ class ServicesResource(_Resource):
         response = self._transport.send(
             operations.supported_id_types(country), timeout=timeout
         )
-        return SupportedIdTypesResponse.model_validate(response.json())
+        return SupportedIdTypesResponse.model_validate(parse_success_json(response))
 
     def supported_documents(
         self,
@@ -437,7 +437,7 @@ class ServicesResource(_Resource):
             operations.supported_documents(continent, country_code, locale),
             timeout=timeout,
         )
-        return SupportedDocumentsResponse.model_validate(response.json())
+        return SupportedDocumentsResponse.model_validate(parse_success_json(response))
 
     def id_status(
         self, *, country: str, id_type: str, timeout: Optional[float] = None
@@ -446,7 +446,7 @@ class ServicesResource(_Resource):
         response = self._transport.send(
             operations.id_status(country, id_type), timeout=timeout
         )
-        return IdStatusResponse.model_validate(response.json())
+        return IdStatusResponse.model_validate(parse_success_json(response))
 
 
 def _selfie(value: Any, default_filename: str = "selfie.jpg") -> Any:
@@ -508,9 +508,10 @@ class Client:
         return self._config
 
     def _resolve_callback(self, callback_url: Optional[str]) -> Optional[str]:
-        if callback_url is not None:
-            return callback_url
-        return self._config.default_callback_url
+        resolved = callback_url if callback_url is not None else self._config.default_callback_url
+        if resolved is not None:
+            validate_callback_url(resolved)
+        return resolved
 
     def close(self) -> None:
         self._transport.close()

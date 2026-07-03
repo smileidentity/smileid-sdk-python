@@ -39,13 +39,17 @@ The client targets the sandbox by default. Set `environment="production"` to go 
 - `sandbox` → `https://testapi.smileidentity.com`
 - `production` → `https://api.smileidentity.com`
 
-You can pass `base_url` to override the URL entirely (it wins over `environment`).
+You can pass `base_url` to override the URL entirely (it wins over `environment`). The value must be an absolute `https` URL with no query or fragment — anything else raises `smileid.errors.ValidationError` at construction. There is deliberately no way to turn this off: partner credentials and personal data travel on every request. `environment` must be `"sandbox"` or `"production"`; any other value is rejected at construction.
+
+### Callback URLs
+
+Callback URLs must also be `https`. The SDK validates `default_callback_url` when you construct the client, and any per-request `callback_url` before it sends the request.
 
 ### Other options
 
 | Option | Default | Purpose |
 |---|---|---|
-| `default_callback_url` | unset | Used when a call omits `callback_url` |
+| `default_callback_url` | unset | Used when a call omits `callback_url`; must be https |
 | `timeout` | 30 seconds | Per-request total timeout; each method also accepts a `timeout` override |
 | `max_retries` | 2 | Retries for idempotent operations only (see Retries below) |
 | `partner_secret` | unset | Enables HMAC request signing when set (see HMAC signing below) |
@@ -311,6 +315,7 @@ except smileid.errors.SmileIDError as err:
 | `PayloadTooLargeError` | HTTP 413 |
 | `RateLimitError` | HTTP 429 |
 | `APIError` | HTTP 5xx |
+| `UnexpectedResponseError` | A success response whose body is not a JSON object |
 | `ConnectionError` | Network failure or timeout, no HTTP response |
 | `TimeoutError` | `wait_until_complete` deadline reached |
 

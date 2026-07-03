@@ -6,7 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Security
+
+- `base_url` must now be an absolute https URL with no query or fragment,
+  validated at construction. There is deliberately no insecure override.
+- `default_callback_url` and per-request `callback_url` values must be https;
+  invalid values raise `ValidationError` before any request is sent.
+- `job_id` and `user_id` path parameters are URL-encoded as single path
+  segments before interpolation.
+- Multipart part filenames and content types are sanitized against header
+  injection (CR, LF, quotes).
+
 ### Changed
+
+- Added `smileid.errors.UnexpectedResponseError`, raised when a success (2xx)
+  response body is not a JSON object, with `status_code`, `raw_body` and
+  `request_id` populated.
 
 - Renamed the PyPI package from `smile-identity-core` to `smileid`, matching
   the importable module.
