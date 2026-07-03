@@ -10,7 +10,6 @@ from typing import Callable, Dict, Optional, Sequence, TextIO
 import httpx
 import smileid
 
-
 Env = Callable[[str], Optional[str]]
 
 
@@ -63,7 +62,10 @@ def run(
             raise UsageError(f"unknown command {command}")
 
 
-def parse_global_args(argv: Sequence[str], getenv: Env) -> tuple[Dict[str, str], Optional[str], Sequence[str]]:
+def parse_global_args(
+    argv: Sequence[str],
+    getenv: Env,
+) -> tuple[Dict[str, str], Optional[str], Sequence[str]]:
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--partner-id", default=getenv("SMILE_PARTNER_ID") or "")
     parser.add_argument("--api-key", default=getenv("SMILE_API_KEY") or "")
@@ -174,8 +176,7 @@ def run_replay(client: smileid.Client, args: Sequence[str], stdout: TextIO) -> N
 
 
 def dump(model: object) -> Dict[str, object]:
-    method = getattr(model, "model_dump")
-    return method(mode="json")
+    return model.model_dump(mode="json")  # type: ignore[attr-defined]
 
 
 def write_json(stdout: TextIO, value: object) -> None:
@@ -187,10 +188,13 @@ def print_usage(stdout: TextIO) -> None:
     stdout.write(
         """Usage:
   smileid-example-python [global flags] services --country NG
-  smileid-example-python [global flags] enhanced-kyc --country NG --id-type NIN --id-number 12345678901 --given-names Amina --last-name Okafor --email amina@example.com --privacy-url https://example.com/privacy
+  smileid-example-python [global flags] enhanced-kyc --country NG --id-type NIN \
+--id-number 12345678901 --given-names Amina --last-name Okafor \
+--email amina@example.com --privacy-url https://example.com/privacy
   smileid-example-python [global flags] status --job-id job_...
   smileid-example-python [global flags] replay --job-id job_... --callback-url https://example.com/webhook
 
-Global flags can also be set with SMILE_PARTNER_ID, SMILE_API_KEY, SMILE_PARTNER_SECRET, SMILE_BASE_URL, SMILE_CALLBACK_URL and SMILE_TIMEOUT.
+Global flags can also be set with SMILE_PARTNER_ID, SMILE_API_KEY,
+SMILE_PARTNER_SECRET, SMILE_BASE_URL, SMILE_CALLBACK_URL and SMILE_TIMEOUT.
 """
     )

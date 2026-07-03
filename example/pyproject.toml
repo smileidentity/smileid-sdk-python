@@ -9,7 +9,9 @@ description = "Example CLI and integration testbench for the Smile ID Python SDK
 readme = "README.md"
 requires-python = ">=3.8"
 license = "MIT"
-dependencies = []
+dependencies = [
+    "httpx>=0.24",
+]
 
 [project.scripts]
 smileid-example-python = "smileid_example.app:main"

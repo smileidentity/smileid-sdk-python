@@ -139,22 +139,83 @@ class FakeSmileAPI:
             return response(200, {"token": make_jwt()})
         if path == "/v3/services/bank_codes":
             assert request.url.params["country"] == "NG"
-            return response(200, {"bank_codes": [{"code": "001", "country": "NG", "name": "Example Bank"}]})
+            return response(
+                200,
+                {"bank_codes": [{"code": "001", "country": "NG", "name": "Example Bank"}]},
+            )
         if path == "/v3/services/supported_id_types":
             assert request.url.params["country"] == "NG"
-            return response(200, {"id_types": [{"country": "NG", "label": "National Identification Number", "regex": "^\\d{11}$", "required_fields": ["id_number"], "type": "NIN"}]})
+            return response(
+                200,
+                {
+                    "id_types": [
+                        {
+                            "country": "NG",
+                            "label": "National Identification Number",
+                            "regex": "^\\d{11}$",
+                            "required_fields": ["id_number"],
+                            "type": "NIN",
+                        }
+                    ]
+                },
+            )
         if path == "/v3/services/supported_documents":
             assert request.url.params["country_code"] == "NG"
-            return response(200, {"valid_documents": [{"country": {"code": "NG", "name": "Nigeria", "continent": "Africa"}, "id_types": [{"code": "PASSPORT", "name": "Passport", "example": ["A12345678"], "has_back": False}]}]})
+            return response(
+                200,
+                {
+                    "valid_documents": [
+                        {
+                            "country": {
+                                "code": "NG",
+                                "name": "Nigeria",
+                                "continent": "Africa",
+                            },
+                            "id_types": [
+                                {
+                                    "code": "PASSPORT",
+                                    "name": "Passport",
+                                    "example": ["A12345678"],
+                                    "has_back": False,
+                                }
+                            ],
+                        }
+                    ]
+                },
+            )
         if path == "/v3/enhanced_kyc":
             assert request.headers["smileid-token"].startswith("eyJ")
-            return response(202, {"status": "Accepted", "message": "submitted", "job_id": "job_enhanced_123", "user_id": "user_123"})
+            return response(
+                202,
+                {
+                    "status": "Accepted",
+                    "message": "submitted",
+                    "job_id": "job_enhanced_123",
+                    "user_id": "user_123",
+                },
+            )
         if path == "/v3/status/job_enhanced_123":
             assert request.headers["smileid-token"].startswith("eyJ")
-            return response(200, {"status": "complete", "message": "clear", "job_id": "job_enhanced_123", "user_id": "user_123"})
+            return response(
+                200,
+                {
+                    "status": "complete",
+                    "message": "clear",
+                    "job_id": "job_enhanced_123",
+                    "user_id": "user_123",
+                },
+            )
         if path == "/v3/replay/job_enhanced_123":
             assert request.headers["smileid-token"].startswith("eyJ")
-            return response(200, {"status": "success", "message": "replayed", "job_id": "job_enhanced_123", "user_id": "user_123"})
+            return response(
+                200,
+                {
+                    "status": "success",
+                    "message": "replayed",
+                    "job_id": "job_enhanced_123",
+                    "user_id": "user_123",
+                },
+            )
         return response(404, {"status": "not_found", "message": path})
 
     def request_for(self, path: str) -> httpx.Request:

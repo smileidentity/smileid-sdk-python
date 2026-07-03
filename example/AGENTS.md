@@ -13,5 +13,4 @@ This repository is a standalone example application for the Smile ID Python SDK.
 
 - `src/smileid_example/app.py` contains command parsing and SDK calls.
 - `tests/test_app.py` is the SDK testbench.
-- `.github/workflows/ci.yml` runs pytest, mypy, Ruff, and Semgrep.
-- `.github/dependabot.yml` keeps GitHub Actions current.
+- The parent SDK repository runs CI for this embedded example.
