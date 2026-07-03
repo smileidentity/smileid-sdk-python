@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "smileid-example-python"
+version = "0.1.0"
+description = "Example CLI and integration testbench for the Smile ID Python SDK."
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+dependencies = []
+
+[project.scripts]
+smileid-example-python = "smileid_example.app:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "ruff>=0.4",
+    "mypy>=1.8",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/smileid_example"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "W"]
+
+[tool.mypy]
+packages = ["smileid_example"]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+no_implicit_optional = true

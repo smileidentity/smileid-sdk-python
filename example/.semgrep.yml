@@ -1,0 +1,15 @@
+rules:
+  - id: python-hardcoded-smile-credentials
+    message: Do not hard-code Smile ID credentials; read them from environment variables or a secret manager.
+    severity: ERROR
+    languages:
+      - python
+    patterns:
+      - pattern-either:
+          - pattern: |
+              smileid.Client(..., api_key="...", ...)
+          - pattern: |
+              smileid.Client(..., partner_secret="...", ...)
+    metadata:
+      category: security
+      confidence: MEDIUM
