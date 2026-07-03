@@ -73,12 +73,9 @@ def iso8601_millis_utc(moment: Optional[datetime] = None) -> str:
 
 
 def sign_request(partner_secret: str, timestamp: str, body: bytes) -> str:
-    """Compute the provisional HMAC request signature.
+    """Compute the optional HMAC request signature.
 
     ``hex(HMAC_SHA256(key=partner_secret, message=timestamp + body_bytes))``.
-
-    Provisional construction — must be confirmed with the backend before it is
-    enabled in production.
     """
     message = timestamp.encode("utf-8") + body
     return hmac.new(

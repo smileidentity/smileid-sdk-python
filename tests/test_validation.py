@@ -8,6 +8,7 @@ import pytest
 
 import smileid
 from smileid.helpers.user_details import normalize_user_details
+from smileid.generated import operations
 from tests.conftest import JPEG_BYTES, LIVENESS, consent_dict, make_client
 
 
@@ -155,6 +156,51 @@ def test_client_config_validation() -> None:
         smileid.Client(partner_id="1234", api_key="")
     with pytest.raises(smileid.errors.ValidationError):
         smileid.Client(partner_id="1234", api_key="k", environment="staging")
+    with pytest.raises(smileid.errors.ValidationError):
+        smileid.Client(partner_id="1234", api_key="k", base_url="http://api.example.com")
+    with pytest.raises(smileid.errors.ValidationError):
+        smileid.Client(
+            partner_id="1234",
+            api_key="k",
+            default_callback_url="http://partner.example.com/webhook",
+        )
+
+
+def test_loopback_base_url_requires_explicit_opt_in() -> None:
+    client = smileid.Client(
+        partner_id="1234",
+        api_key="k",
+        base_url="http://localhost:8080",
+        allow_insecure_base_url=True,
+    )
+    assert client.config.base_url == "http://localhost:8080"
+
+
+def test_callback_url_must_use_https(respx_mock: Any, mock_token: Any) -> None:
+    client = make_client()
+    with pytest.raises(smileid.errors.ValidationError):
+        client.enhanced_kyc.verify(
+            country="NG",
+            id_type="NIN",
+            id_number="12345678901",
+            user_details={"given_names": "John", "last_name": "Doe", "email": "john@example.com"},
+            consent=consent_dict(),
+            callback_url="http://partner.example.com/webhook",
+        )
+    assert not respx_mock.calls
+
+
+def test_path_parameters_are_encoded_as_single_segments() -> None:
+    assert operations.get_status("job/with/slash").path == "/v3/status/job%2Fwith%2Fslash"
+    assert (
+        operations.report_fraud(
+            "user/with/slash",
+            is_fraud=False,
+            reported_by="risk@example.com",
+            notes="cleared",
+        ).path
+        == "/v3/users/user%2Fwith%2Fslash/report_fraud"
+    )
 
 
 def test_verify_enhanced_requires_id_type(respx_mock: Any, mock_token: Any) -> None:

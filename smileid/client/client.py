@@ -12,7 +12,7 @@ from typing import Any, List, Optional, Type, Union
 
 import httpx
 
-from smileid.client.config import ClientConfig
+from smileid.client.config import ClientConfig, validate_callback_url
 from smileid.client.transport import Transport
 from smileid.errors import ValidationError
 from smileid.generated import operations
@@ -481,6 +481,7 @@ class Client:
         base_url: Optional[str] = None,
         timeout: float = 30.0,
         max_retries: int = 2,
+        allow_insecure_base_url: bool = False,
         http_client: Optional[httpx.Client] = None,
     ) -> None:
         self._config = ClientConfig(
@@ -490,6 +491,7 @@ class Client:
             partner_secret=partner_secret,
             default_callback_url=default_callback_url,
             base_url=base_url,
+            allow_insecure_base_url=allow_insecure_base_url,
             timeout=timeout,
             max_retries=max_retries,
         )
@@ -508,9 +510,10 @@ class Client:
         return self._config
 
     def _resolve_callback(self, callback_url: Optional[str]) -> Optional[str]:
-        if callback_url is not None:
-            return callback_url
-        return self._config.default_callback_url
+        resolved = callback_url if callback_url is not None else self._config.default_callback_url
+        if resolved:
+            validate_callback_url(resolved)
+        return resolved
 
     def close(self) -> None:
         self._transport.close()

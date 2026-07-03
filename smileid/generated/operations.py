@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
+from urllib.parse import quote
 
 # A normalized binary part: (filename, raw bytes, content type).
 BinaryPart = Tuple[str, bytes, str]
@@ -337,7 +338,7 @@ def get_status(job_id: str) -> Request:
     """GET /v3/status/{jobId}. 404 returns a JobStatus body."""
     return Request(
         method="GET",
-        path=f"/v3/status/{job_id}",
+        path=f"/v3/status/{_path_segment(job_id)}",
         authenticated=True,
         idempotent=True,
         ok_statuses=(200, 202, 404),
@@ -348,7 +349,7 @@ def replay(job_id: str, callback_url: Optional[str] = None) -> Request:
     """POST /v3/replay/{job_id}. JSON body, NOT multipart."""
     return Request(
         method="POST",
-        path=f"/v3/replay/{job_id}",
+        path=f"/v3/replay/{_path_segment(job_id)}",
         authenticated=True,
         idempotent=False,
         json_body={"callback_url": callback_url} if callback_url else None,
@@ -367,7 +368,7 @@ def report_fraud(
     """POST /v3/users/{user_id}/report_fraud. Multipart."""
     req = Request(
         method="POST",
-        path=f"/v3/users/{user_id}/report_fraud",
+        path=f"/v3/users/{_path_segment(user_id)}/report_fraud",
         authenticated=True,
         idempotent=False,
         body_kind="multipart",
@@ -434,3 +435,7 @@ def id_status(country: str, id_type: str) -> Request:
         idempotent=True,
         query={"country": country, "id_type": id_type},
     )
+
+
+def _path_segment(value: str) -> str:
+    return quote(value, safe="")
