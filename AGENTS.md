@@ -1,6 +1,6 @@
 # Agent notes
 
-This repository holds Smile ID's V3 server-side SDK for Python (package name `smile-identity-core`, importable module `smileid`).
+This repository holds Smile ID's V3 server-side SDK for Python (PyPI package and importable module are both `smileid`).
 
 ## Source of truth
 
