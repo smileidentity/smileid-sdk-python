@@ -6,13 +6,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-### Removed
-
-- The `partner_secret` option and HMAC request signing (the
-  `SmileID-Timestamp` and `SmileID-Request-Signature` headers). Product
-  decision: the provisional signing scheme confused partners for little
-  benefit. It may be reintroduced if a signing contract is agreed.
-
 ### Security
 
 - `base_url` must now be an absolute https URL with no query or fragment,
