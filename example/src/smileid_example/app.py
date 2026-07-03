@@ -44,7 +44,6 @@ def run(
     with smileid.Client(
         partner_id=config["partner_id"],
         api_key=config["api_key"],
-        partner_secret=config.get("partner_secret"),
         base_url=config.get("base_url"),
         default_callback_url=config.get("callback_url"),
         timeout=float(config["timeout"]),
@@ -69,7 +68,6 @@ def parse_global_args(
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--partner-id", default=getenv("SMILE_PARTNER_ID") or "")
     parser.add_argument("--api-key", default=getenv("SMILE_API_KEY") or "")
-    parser.add_argument("--partner-secret", default=optional_env(getenv, "SMILE_PARTNER_SECRET"))
     parser.add_argument("--base-url", default=optional_env(getenv, "SMILE_BASE_URL"))
     parser.add_argument("--callback-url", default=optional_env(getenv, "SMILE_CALLBACK_URL"))
     parser.add_argument("--timeout", default=getenv("SMILE_TIMEOUT") or "30")
@@ -195,6 +193,6 @@ def print_usage(stdout: TextIO) -> None:
   smileid-example-python [global flags] replay --job-id job_... --callback-url https://example.com/webhook
 
 Global flags can also be set with SMILE_PARTNER_ID, SMILE_API_KEY,
-SMILE_PARTNER_SECRET, SMILE_BASE_URL, SMILE_CALLBACK_URL and SMILE_TIMEOUT.
+SMILE_BASE_URL, SMILE_CALLBACK_URL and SMILE_TIMEOUT.
 """
     )

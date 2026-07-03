@@ -28,7 +28,6 @@ export SMILE_CALLBACK_URL="https://your-app.example.com/smile-callback"
 
 Optional:
 
-- `SMILE_PARTNER_SECRET` enables optional HMAC request signing.
 - `SMILE_BASE_URL` overrides the SDK environment URL.
 - `SMILE_TIMEOUT` sets the per-request timeout in seconds.
 
