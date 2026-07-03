@@ -1,4 +1,4 @@
-# smile-identity-core
+# smileid
 
 ![PyPI version](https://img.shields.io/badge/pypi-unpublished-lightgrey)
 ![CI status](https://img.shields.io/badge/ci-pending-lightgrey)
@@ -8,12 +8,12 @@ Official Smile ID server-side SDK for Python — V3 APIs.
 
 This project is under active development. It is not yet published to PyPI, and the API is not stable. Do not use it in production yet.
 
-The importable module is `smileid`. Python 3.8 or later is required.
+The package and the importable module are both named `smileid`. Python 3.8 or later is required.
 
 ## Install
 
 ```bash
-pip install smile-identity-core
+pip install smileid
 ```
 
 ## Getting started

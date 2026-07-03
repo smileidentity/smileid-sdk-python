@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- Renamed the PyPI package from `smile-identity-core` to `smileid`, matching
+  the importable module.
+- Set the version to 12.0.0, aligning the server SDKs with the V12 mobile
+  SDKs.
+
 ### Added
 
 - Initial implementation of the V3 SDK: all 14 public operations under

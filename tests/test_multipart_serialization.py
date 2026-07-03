@@ -65,8 +65,8 @@ def test_enhanced_kyc_multipart_shape(respx_mock: Any, mock_token: Any) -> None:
 
     # Telemetry headers always present.
     assert request.headers["SmileID-Source-SDK"] == "python"
-    assert request.headers["SmileID-Source-SDK-Version"] == "0.1.0"
-    assert request.headers["User-Agent"].startswith("smileid-sdk-python/0.1.0")
+    assert request.headers["SmileID-Source-SDK-Version"] == "12.0.0"
+    assert request.headers["User-Agent"].startswith("smileid-sdk-python/12.0.0")
 
 
 def test_document_verification_repeated_liveness_and_partner_id(
