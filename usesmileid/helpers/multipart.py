@@ -14,7 +14,7 @@ from __future__ import annotations
 import os
 from typing import Any, List, Optional, Tuple
 
-from smileid.errors import ValidationError
+from usesmileid.errors import ValidationError
 
 BinaryPart = Tuple[str, bytes, str]
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from smileid.errors import ValidationError
+from usesmileid.errors import ValidationError
 
 FRAUD_REASONS = frozenset(
     {

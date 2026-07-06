@@ -7,7 +7,7 @@ from typing import Any
 import httpx
 import pytest
 
-import smileid
+import usesmileid
 from tests.conftest import BASE_URL, make_client
 
 JOB_ID = "job_01h8x9y2z3a4b5c6d7e8f9g0h1"
@@ -33,7 +33,7 @@ NOT_FOUND = {
 
 @pytest.fixture(autouse=True)
 def _fast_poll(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("smileid.helpers.polling.time.sleep", lambda *_a: None)
+    monkeypatch.setattr("usesmileid.helpers.polling.time.sleep", lambda *_a: None)
 
 
 def test_polls_until_complete(respx_mock: Any, mock_token: Any) -> None:
@@ -84,10 +84,10 @@ def test_timeout_raises_sdk_timeout_error(
     # Simulate the clock jumping past the deadline after the first poll.
     clock = iter([0.0, 0.0, 100.0, 200.0, 300.0])
     monkeypatch.setattr(
-        "smileid.helpers.polling.time.monotonic", lambda: next(clock)
+        "usesmileid.helpers.polling.time.monotonic", lambda: next(clock)
     )
     client = make_client()
-    with pytest.raises(smileid.errors.TimeoutError):
+    with pytest.raises(usesmileid.errors.TimeoutError):
         client.verifications.wait_until_complete(JOB_ID, timeout=60.0, interval=0.01)
 
 
@@ -95,7 +95,7 @@ def test_interval_is_respected(
     respx_mock: Any, mock_token: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     sleeps = []
-    monkeypatch.setattr("smileid.helpers.polling.time.sleep", lambda s: sleeps.append(s))
+    monkeypatch.setattr("usesmileid.helpers.polling.time.sleep", lambda s: sleeps.append(s))
     respx_mock.get(f"{BASE_URL}/v3/status/{JOB_ID}").mock(
         side_effect=[
             httpx.Response(202, json=PROCESSING),

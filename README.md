@@ -1,4 +1,4 @@
-# smileid
+# usesmileid
 
 ![PyPI version](https://img.shields.io/badge/pypi-unpublished-lightgrey)
 ![CI status](https://img.shields.io/badge/ci-pending-lightgrey)
@@ -8,12 +8,12 @@ Official Smile ID server-side SDK for Python — V3 APIs.
 
 This project is under active development. It is not yet published to PyPI, and the API is not stable. Do not use it in production yet.
 
-The package and the importable module are both named `smileid`. Python 3.8 or later is required.
+The package and the importable module are both named `usesmileid`. Python 3.8 or later is required.
 
 ## Install
 
 ```bash
-pip install smileid
+pip install usesmileid
 ```
 
 ## Getting started
@@ -23,9 +23,9 @@ Construct one client with your partner ID and API key. The SDK manages authentic
 ```python
 import os
 
-import smileid
+import usesmileid
 
-smile = smileid.Client(
+smile = usesmileid.Client(
     partner_id="1234",
     api_key=os.environ["SMILE_API_KEY"],
     environment="sandbox",  # the default
@@ -39,7 +39,7 @@ The client targets the sandbox by default. Set `environment="production"` to go 
 - `sandbox` → `https://testapi.smileidentity.com`
 - `production` → `https://api.smileidentity.com`
 
-You can pass `base_url` to override the URL entirely (it wins over `environment`). The value must be an absolute `https` URL with no query or fragment — anything else raises `smileid.errors.ValidationError` at construction. There is deliberately no way to turn this off: partner credentials and personal data travel on every request. `environment` must be `"sandbox"` or `"production"`; any other value is rejected at construction.
+You can pass `base_url` to override the URL entirely (it wins over `environment`). The value must be an absolute `https` URL with no query or fragment — anything else raises `usesmileid.errors.ValidationError` at construction. There is deliberately no way to turn this off: partner credentials and personal data travel on every request. `environment` must be `"sandbox"` or `"production"`; any other value is rejected at construction.
 
 ### Callback URLs
 
@@ -60,12 +60,12 @@ Every image parameter (`selfie_image`, `liveness_images`, `document`, `document_
 
 ### Consent and user details
 
-All verification submissions need a consent record and the user's details. Build consent with the helper; pass user details as a dict or a `smileid.UserDetails`. At least one of `email` or `phone_number` is required — the SDK checks this before sending.
+All verification submissions need a consent record and the user's details. Build consent with the helper; pass user details as a dict or a `usesmileid.UserDetails`. At least one of `email` or `phone_number` is required — the SDK checks this before sending.
 
 ```python
 from datetime import datetime, timezone
 
-consent = smileid.Consent.granted(
+consent = usesmileid.Consent.granted(
     granted_at=datetime.now(timezone.utc),
     notice_language="EN",
     notice_privacy_policy_url="https://example.com/privacy",
@@ -198,7 +198,7 @@ A job that is not found returns a `JobStatus` with `status="not_found"` — it d
 
 ### Wait for a verification to complete
 
-Polls the status endpoint until the job completes. Raises `smileid.errors.TimeoutError` if it does not complete in time.
+Polls the status endpoint until the job completes. Raises `usesmileid.errors.TimeoutError` if it does not complete in time.
 
 ```python
 status = smile.verifications.wait_until_complete(
@@ -222,7 +222,7 @@ replayed = smile.verifications.replay(
 )
 ```
 
-Replaying a job that is still processing raises `smileid.errors.ConflictError`.
+Replaying a job that is still processing raises `usesmileid.errors.ConflictError`.
 
 ### Report user fraud
 
@@ -287,18 +287,18 @@ Submission endpoints return an `AcceptedResponse`. Use `response.is_accepted` ra
 
 ## Error handling
 
-All errors raised by the SDK subclass `smileid.errors.SmileIDError` and expose `status_code`, `status`, `message`, `code`, `request_id` and `raw_body`.
+All errors raised by the SDK subclass `usesmileid.errors.SmileIDError` and expose `status_code`, `status`, `message`, `code`, `request_id` and `raw_body`.
 
 ```python
-import smileid.errors
+import usesmileid.errors
 
 try:
     accepted = smile.enhanced_kyc.verify(...)
-except smileid.errors.PaymentRequiredError:
+except usesmileid.errors.PaymentRequiredError:
     ...  # top up your wallet
-except smileid.errors.InvalidRequestError as err:
+except usesmileid.errors.InvalidRequestError as err:
     print(err.status_code, err.message)
-except smileid.errors.SmileIDError as err:
+except usesmileid.errors.SmileIDError as err:
     ...  # everything else
 ```
 
@@ -322,7 +322,7 @@ except smileid.errors.SmileIDError as err:
 
 The SDK automatically retries idempotent operations only: status and services reads, and the internal token fetch. Retries cover connection errors and HTTP 408, 429 and 5xx, with exponential backoff, and honour the `Retry-After` header. HTTP 409 is never retried.
 
-Submission calls (verification, enrollment, authentication, compare, replay, fraud reports) are never retried automatically, because a retry could create a duplicate job. A connection failure on these raises `smileid.errors.ConnectionError` and you decide whether to retry.
+Submission calls (verification, enrollment, authentication, compare, replay, fraud reports) are never retried automatically, because a retry could create a duplicate job. A connection failure on these raises `usesmileid.errors.ConnectionError` and you decide whether to retry.
 
 ## Telemetry
 

@@ -7,7 +7,7 @@ from typing import Any
 import httpx
 import pytest
 
-import smileid
+import usesmileid
 from tests.conftest import BASE_URL, consent_dict, make_client, user_details_dict
 
 
@@ -29,7 +29,7 @@ def test_get_retried_on_429_and_honours_retry_after(
 ) -> None:
     sleeps = []
     monkeypatch.setattr(
-        "smileid.client.transport.time.sleep", lambda s: sleeps.append(s)
+        "usesmileid.client.transport.time.sleep", lambda s: sleeps.append(s)
     )
     route = respx_mock.get(f"{BASE_URL}/v3/services/id_status").mock(
         side_effect=[
@@ -52,7 +52,7 @@ def test_retry_after_http_date_form(
 
     sleeps = []
     monkeypatch.setattr(
-        "smileid.client.transport.time.sleep", lambda s: sleeps.append(s)
+        "usesmileid.client.transport.time.sleep", lambda s: sleeps.append(s)
     )
     retry_at = format_datetime(
         datetime.now(timezone.utc) + timedelta(seconds=10), usegmt=True
@@ -77,7 +77,7 @@ def test_retry_after_past_http_date_floors_at_zero(
 ) -> None:
     sleeps = []
     monkeypatch.setattr(
-        "smileid.client.transport.time.sleep", lambda s: sleeps.append(s)
+        "usesmileid.client.transport.time.sleep", lambda s: sleeps.append(s)
     )
     route = respx_mock.get(f"{BASE_URL}/v3/services/id_status").mock(
         side_effect=[
@@ -100,7 +100,7 @@ def test_retry_after_capped_at_60_seconds(
 ) -> None:
     sleeps = []
     monkeypatch.setattr(
-        "smileid.client.transport.time.sleep", lambda s: sleeps.append(s)
+        "usesmileid.client.transport.time.sleep", lambda s: sleeps.append(s)
     )
     route = respx_mock.get(f"{BASE_URL}/v3/services/id_status").mock(
         side_effect=[
@@ -121,7 +121,7 @@ def test_retry_after_unparseable_falls_back_to_backoff(
 ) -> None:
     sleeps = []
     monkeypatch.setattr(
-        "smileid.client.transport.time.sleep", lambda s: sleeps.append(s)
+        "usesmileid.client.transport.time.sleep", lambda s: sleeps.append(s)
     )
     route = respx_mock.get(f"{BASE_URL}/v3/services/id_status").mock(
         side_effect=[
@@ -143,7 +143,7 @@ def test_entry_post_never_retried_on_500(respx_mock: Any, mock_token: Any) -> No
         return_value=httpx.Response(500, json={"status": "Server Error", "message": "boom"})
     )
     client = make_client()
-    with pytest.raises(smileid.errors.APIError):
+    with pytest.raises(usesmileid.errors.APIError):
         client.enhanced_kyc.verify(
             country="NG",
             id_type="NIN",
@@ -159,7 +159,7 @@ def test_entry_post_connection_error_surfaces(respx_mock: Any, mock_token: Any) 
         side_effect=httpx.ConnectError("dns")
     )
     client = make_client()
-    with pytest.raises(smileid.errors.ConnectionError):
+    with pytest.raises(usesmileid.errors.ConnectionError):
         client.enhanced_kyc.verify(
             country="NG",
             id_type="NIN",
@@ -189,7 +189,7 @@ def test_replay_409_never_retried_raises_conflict(
         )
     )
     client = make_client()
-    with pytest.raises(smileid.errors.ConflictError):
+    with pytest.raises(usesmileid.errors.ConflictError):
         client.verifications.replay("job_x")
     assert route.call_count == 1  # 409 is never auto-retried
 
@@ -199,6 +199,6 @@ def test_max_retries_exhausted(respx_mock: Any, mock_token: Any) -> None:
         return_value=httpx.Response(503, json={"status": "x", "message": "y"})
     )
     client = make_client(max_retries=2)
-    with pytest.raises(smileid.errors.APIError):
+    with pytest.raises(usesmileid.errors.APIError):
         client.services.id_status(country="NG", id_type="NIN")
     assert route.call_count == 3  # initial + 2 retries

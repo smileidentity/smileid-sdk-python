@@ -1,5 +1,5 @@
-import smileid
+import usesmileid
 
 
 def test_version():
-    assert smileid.__version__ == "12.0.0"
+    assert usesmileid.__version__ == "12.0.0"

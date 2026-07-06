@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "smileid"
+name = "usesmileid"
 version = "12.0.0"
 description = "Official Smile ID server-side SDK for Python — V3 APIs."
 readme = "README.md"
@@ -41,7 +41,7 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["smileid"]
+packages = ["usesmileid"]
 
 [tool.ruff]
 line-length = 100
@@ -56,7 +56,7 @@ select = ["E", "F", "I", "B", "W"]
 [tool.mypy]
 # No python_version pin: recent mypy releases no longer accept a 3.8 target.
 # Runtime compatibility with 3.8 is covered by the CI test matrix.
-packages = ["smileid"]
+packages = ["usesmileid"]
 plugins = ["pydantic.mypy"]
 warn_unused_ignores = true
 disallow_untyped_defs = true

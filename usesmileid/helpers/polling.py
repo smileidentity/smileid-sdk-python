@@ -5,8 +5,8 @@ from __future__ import annotations
 import time
 from typing import Callable
 
-from smileid.errors import TimeoutError
-from smileid.generated.models import JobStatus
+from usesmileid.errors import TimeoutError
+from usesmileid.generated.models import JobStatus
 
 
 def wait_until_complete(
@@ -21,7 +21,7 @@ def wait_until_complete(
 
     Returns the terminal :class:`JobStatus`. When ``treat_not_found_as_pending``
     is false, a ``not_found`` result is returned immediately. Raises
-    :class:`smileid.errors.TimeoutError` if the job does not complete within
+    :class:`usesmileid.errors.TimeoutError` if the job does not complete within
     ``timeout`` seconds.
     """
     deadline = time.monotonic() + timeout

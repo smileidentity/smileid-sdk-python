@@ -17,18 +17,18 @@ from typing import List, Optional, Tuple
 
 import httpx
 
-from smileid._version import __version__
-from smileid.client.auth import TokenManager
-from smileid.client.config import ClientConfig
-from smileid.errors import (
+from usesmileid._version import __version__
+from usesmileid.client.auth import TokenManager
+from usesmileid.client.config import ClientConfig
+from usesmileid.errors import (
     ConnectionError,
     UnexpectedResponseError,
     ValidationError,
     parse_error,
     parse_success_json,
 )
-from smileid.generated import operations
-from smileid.generated.operations import Request
+from usesmileid.generated import operations
+from usesmileid.generated.operations import Request
 
 # HTTP statuses that are safe to retry for idempotent operations.
 # 409 is deliberately absent — it is a business-state conflict, not transient.
