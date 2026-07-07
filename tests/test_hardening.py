@@ -10,8 +10,7 @@ from typing import Any
 import httpx
 import pytest
 
-import smileid
-from smileid.client.transport import _check_media_type, _sanitize_filename
+import usesmileid
 from tests.conftest import (
     BASE_URL,
     JPEG_BYTES,
@@ -21,11 +20,12 @@ from tests.conftest import (
     parse_multipart,
     user_details_dict,
 )
+from usesmileid.client.transport import _check_media_type, _sanitize_filename
 
 ACCEPTED = {"status": "Accepted", "job_id": "job_x", "user_id": "user_x"}
 
 
-def _verify(client: smileid.Client, **overrides: Any) -> Any:
+def _verify(client: usesmileid.Client, **overrides: Any) -> Any:
     kwargs: Any = {
         "country": "NG",
         "id_type": "NIN",
@@ -54,7 +54,7 @@ def _verify(client: smileid.Client, **overrides: Any) -> Any:
     ],
 )
 def test_base_url_must_be_clean_https(base_url: str) -> None:
-    with pytest.raises(smileid.errors.ValidationError):
+    with pytest.raises(usesmileid.errors.ValidationError):
         make_client(base_url=base_url)
 
 
@@ -65,7 +65,7 @@ def test_https_base_url_accepted() -> None:
 
 def test_no_insecure_escape_hatch() -> None:
     """The https requirement is deliberate policy: no bypass option exists."""
-    params = inspect.signature(smileid.Client.__init__).parameters
+    params = inspect.signature(usesmileid.Client.__init__).parameters
     assert not any("insecure" in name for name in params)
 
 
@@ -73,7 +73,7 @@ def test_no_insecure_escape_hatch() -> None:
 
 
 def test_default_callback_url_must_be_https() -> None:
-    with pytest.raises(smileid.errors.ValidationError):
+    with pytest.raises(usesmileid.errors.ValidationError):
         make_client(default_callback_url="http://app.example.com/cb")
 
 
@@ -81,7 +81,7 @@ def test_per_request_callback_url_must_be_https_entry_op(
     respx_mock: Any, mock_token: Any
 ) -> None:
     client = make_client()
-    with pytest.raises(smileid.errors.ValidationError):
+    with pytest.raises(usesmileid.errors.ValidationError):
         _verify(client, callback_url="http://app.example.com/cb")
     assert not respx_mock.calls  # rejected before any request, even the token
 
@@ -90,7 +90,7 @@ def test_per_request_callback_url_must_be_https_replay(
     respx_mock: Any, mock_token: Any
 ) -> None:
     client = make_client()
-    with pytest.raises(smileid.errors.ValidationError):
+    with pytest.raises(usesmileid.errors.ValidationError):
         client.verifications.replay("job_x", callback_url="http://app.example.com/cb")
     assert not respx_mock.calls
 
@@ -116,12 +116,12 @@ def test_2xx_non_json_body_raises_unexpected_response(
         return_value=httpx.Response(202, text="OK")
     )
     client = make_client()
-    with pytest.raises(smileid.errors.UnexpectedResponseError) as excinfo:
+    with pytest.raises(usesmileid.errors.UnexpectedResponseError) as excinfo:
         _verify(client)
     err = excinfo.value
     assert err.status_code == 202
     assert err.raw_body == "OK"
-    assert isinstance(err, smileid.errors.SmileIDError)
+    assert isinstance(err, usesmileid.errors.SmileIDError)
 
 
 def test_2xx_json_array_body_raises_unexpected_response(respx_mock: Any) -> None:
@@ -129,7 +129,7 @@ def test_2xx_json_array_body_raises_unexpected_response(respx_mock: Any) -> None
         return_value=httpx.Response(200, json=[1, 2, 3])
     )
     client = make_client()
-    with pytest.raises(smileid.errors.UnexpectedResponseError):
+    with pytest.raises(usesmileid.errors.UnexpectedResponseError):
         client.services.bank_codes()
 
 
@@ -138,7 +138,7 @@ def test_token_non_object_body_raises_unexpected_response(respx_mock: Any) -> No
         return_value=httpx.Response(200, text="not json")
     )
     client = make_client()
-    with pytest.raises(smileid.errors.UnexpectedResponseError):
+    with pytest.raises(usesmileid.errors.UnexpectedResponseError):
         client.services.id_status(country="NG", id_type="NIN")
 
 
@@ -147,7 +147,7 @@ def test_token_missing_field_raises_unexpected_response(respx_mock: Any) -> None
         return_value=httpx.Response(200, json={"nope": True})
     )
     client = make_client()
-    with pytest.raises(smileid.errors.UnexpectedResponseError):
+    with pytest.raises(usesmileid.errors.UnexpectedResponseError):
         client.services.id_status(country="NG", id_type="NIN")
 
 
@@ -253,9 +253,9 @@ def test_sanitize_filename_rules() -> None:
 
 
 def test_hostile_content_type_rejected() -> None:
-    with pytest.raises(smileid.errors.ValidationError):
+    with pytest.raises(usesmileid.errors.ValidationError):
         _check_media_type("image/jpeg\r\nX-Evil: 1")
-    with pytest.raises(smileid.errors.ValidationError):
+    with pytest.raises(usesmileid.errors.ValidationError):
         _check_media_type('image/"jpeg"')
     assert _check_media_type("image/jpeg") == "image/jpeg"
     assert _check_media_type("application/json") == "application/json"
@@ -266,7 +266,7 @@ def test_hostile_content_type_rejected() -> None:
 
 @pytest.mark.parametrize("environment", ["staging", "prod", "", "SANDBOX"])
 def test_invalid_environment_rejected(environment: str) -> None:
-    with pytest.raises(smileid.errors.ValidationError):
+    with pytest.raises(usesmileid.errors.ValidationError):
         make_client(environment=environment)
 
 

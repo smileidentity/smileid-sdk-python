@@ -5,7 +5,7 @@ field to its destination (path / query / header / body scalar / body JSON part /
 multipart binary). The hand-written transport executes the request.
 
 Binary inputs reach these builders already normalized to ``(filename, bytes,
-content_type)`` tuples by ``smileid.helpers.multipart``.
+content_type)`` tuples by ``usesmileid.helpers.multipart``.
 """
 
 from __future__ import annotations

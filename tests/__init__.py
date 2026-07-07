@@ -1,1 +1,1 @@
-"""Test package for local imports."""
+"""Test package for local absolute imports."""

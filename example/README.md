@@ -1,6 +1,6 @@
 # Smile ID Python SDK Example
 
-This repository is a small CLI application that demonstrates the public `smileid` Python SDK.
+This repository is a small CLI application that demonstrates the public `usesmileid` Python SDK.
 
 It also acts as a testbench: tests run the same CLI code against `httpx.MockTransport` and verify the SDK sends the expected requests.
 

@@ -2,10 +2,10 @@
 
 Typical use::
 
-    import smileid
+    import usesmileid
     from datetime import datetime, timezone
 
-    smile = smileid.Client(
+    smile = usesmileid.Client(
         partner_id="1234",
         api_key="...",
         environment="sandbox",
@@ -15,7 +15,7 @@ Typical use::
         id_type="NIN",
         id_number="12345678901",
         user_details={"given_names": "John", "last_name": "Doe", "email": "john@example.com"},
-        consent=smileid.Consent.granted(
+        consent=usesmileid.Consent.granted(
             granted_at=datetime.now(timezone.utc),
             notice_language="EN",
             notice_privacy_policy_url="https://example.com/privacy",
@@ -24,10 +24,10 @@ Typical use::
     accepted.is_accepted  # True
 """
 
-from smileid import errors
-from smileid._version import __version__
-from smileid.client import Client, ClientConfig
-from smileid.generated.models import (
+from usesmileid import errors
+from usesmileid._version import __version__
+from usesmileid.client import Client, ClientConfig
+from usesmileid.generated.models import (
     AcceptedResponse,
     BankCodesResponse,
     IdStatusResponse,
@@ -37,7 +37,7 @@ from smileid.generated.models import (
     SupportedDocumentsResponse,
     SupportedIdTypesResponse,
 )
-from smileid.helpers import Consent, UserDetails
+from usesmileid.helpers import Consent, UserDetails
 
 __all__ = [
     "__version__",

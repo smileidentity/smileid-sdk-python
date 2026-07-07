@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Optional
 from urllib.parse import urlparse
 
-from smileid.errors import ValidationError
+from usesmileid.errors import ValidationError
 
 Environment = str  # "sandbox" | "production"
 

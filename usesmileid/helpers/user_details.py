@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional, Union
 
-from smileid.errors import ValidationError
+from usesmileid.errors import ValidationError
 
 
 @dataclass

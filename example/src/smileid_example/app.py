@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from typing import Callable, Dict, Optional, Sequence, TextIO
 
 import httpx
-import smileid
+import usesmileid
 
 Env = Callable[[str], Optional[str]]
 
@@ -41,7 +41,7 @@ def run(
         raise UsageError("missing command; run one of: services, enhanced-kyc, status, replay")
     validate_config(config)
 
-    with smileid.Client(
+    with usesmileid.Client(
         partner_id=config["partner_id"],
         api_key=config["api_key"],
         base_url=config.get("base_url"),
@@ -90,7 +90,7 @@ def validate_config(config: Dict[str, str]) -> None:
         raise UsageError(f"missing {' and '.join(missing)}")
 
 
-def run_services(client: smileid.Client, args: Sequence[str], stdout: TextIO) -> None:
+def run_services(client: usesmileid.Client, args: Sequence[str], stdout: TextIO) -> None:
     parser = argparse.ArgumentParser(prog="services")
     parser.add_argument("--country", default="NG")
     opts = parser.parse_args(args)
@@ -109,7 +109,7 @@ def run_services(client: smileid.Client, args: Sequence[str], stdout: TextIO) ->
 
 
 def run_enhanced_kyc(
-    client: smileid.Client,
+    client: usesmileid.Client,
     args: Sequence[str],
     config: Dict[str, str],
     stdout: TextIO,
@@ -137,7 +137,7 @@ def run_enhanced_kyc(
         id_type=opts.id_type,
         id_number=opts.id_number,
         user_details=user_details,
-        consent=smileid.Consent.granted(
+        consent=usesmileid.Consent.granted(
             granted_at=datetime.now(timezone.utc),
             notice_language="EN",
             notice_privacy_policy_url=opts.privacy_url,
@@ -156,7 +156,7 @@ def run_enhanced_kyc(
     )
 
 
-def run_status(client: smileid.Client, args: Sequence[str], stdout: TextIO) -> None:
+def run_status(client: usesmileid.Client, args: Sequence[str], stdout: TextIO) -> None:
     parser = argparse.ArgumentParser(prog="status")
     parser.add_argument("--job-id", required=True)
     opts = parser.parse_args(args)
@@ -164,7 +164,7 @@ def run_status(client: smileid.Client, args: Sequence[str], stdout: TextIO) -> N
     write_json(stdout, dump(status))
 
 
-def run_replay(client: smileid.Client, args: Sequence[str], stdout: TextIO) -> None:
+def run_replay(client: usesmileid.Client, args: Sequence[str], stdout: TextIO) -> None:
     parser = argparse.ArgumentParser(prog="replay")
     parser.add_argument("--job-id", required=True)
     parser.add_argument("--callback-url")
