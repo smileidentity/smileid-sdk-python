@@ -105,7 +105,9 @@ def test_replay_requests_callback_replay() -> None:
     assert result["status"] == "success"
     assert result["job_id"] == "job_enhanced_123"
     request = fake.request_for("/v3/replay/job_enhanced_123")
-    assert json.loads(request.content) == {"callback_url": "https://example.com/replay-callback"}
+    assert request.headers["content-type"].startswith("multipart/form-data")
+    assert b'name="callback_url"' in request.content
+    assert b"https://example.com/replay-callback" in request.content
 
 
 def test_help_does_not_require_credentials() -> None:

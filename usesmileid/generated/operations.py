@@ -34,8 +34,7 @@ class Request:
     text_parts: List[Tuple[str, str]] = field(default_factory=list)
     json_parts: List[Tuple[str, str]] = field(default_factory=list)
     binary_parts: List[Tuple[str, str, bytes, str]] = field(default_factory=list)
-    json_body: Optional[dict] = None
-    body_kind: str = "none"  # "multipart" | "json" | "none"
+    body_kind: str = "none"  # "multipart" | "none"
     ok_statuses: Tuple[int, ...] = (200, 202)
 
 
@@ -346,15 +345,17 @@ def get_status(job_id: str) -> Request:
 
 
 def replay(job_id: str, callback_url: Optional[str] = None) -> Request:
-    """POST /v3/replay/{job_id}. JSON body, NOT multipart."""
-    return Request(
+    """POST /v3/replay/{job_id}. Optional multipart body; no body when
+    callback_url is omitted."""
+    req = Request(
         method="POST",
         path=f"/v3/replay/{quote(job_id, safe='')}",
         authenticated=True,
         idempotent=False,
-        json_body={"callback_url": callback_url} if callback_url else None,
-        body_kind="json",
+        body_kind="multipart" if callback_url else "none",
     )
+    _add_scalar(req, "callback_url", callback_url)
+    return req
 
 
 def report_fraud(

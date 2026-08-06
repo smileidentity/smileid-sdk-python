@@ -222,7 +222,10 @@ def test_report_fraud_is_multipart_with_scalars(
     assert by_name["reported_by"]["body"] == b"risk@partner.example"
 
 
-def test_replay_uses_json_body_not_multipart(respx_mock: Any, mock_token: Any) -> None:
+def test_replay_with_override_sends_multipart_callback_url(
+    respx_mock: Any, mock_token: Any
+) -> None:
+    """Replay takes multipart/form-data, not JSON (415 otherwise)."""
     route = respx_mock.post(
         f"{BASE_URL}/v3/replay/job_01h8x9y2z3a4b5c6d7e8f9g0h1"
     ).mock(
@@ -242,10 +245,24 @@ def test_replay_uses_json_body_not_multipart(respx_mock: Any, mock_token: Any) -
         callback_url="https://partner.example.com/webhook",
     )
     request = route.calls.last.request
-    assert request.headers["content-type"].startswith("application/json")
-    assert json.loads(request.content) == {
-        "callback_url": "https://partner.example.com/webhook"
-    }
+    assert request.headers["content-type"].startswith("multipart/form-data")
+    parts = parse_multipart(request)
+    assert [p["name"] for p in parts] == ["callback_url"]
+    part = parts[0]
+    assert part["body"] == b"https://partner.example.com/webhook"
+    assert part["content_type"] is None  # plain text part
+    assert part["filename"] is None
+
+
+def test_replay_without_override_sends_no_body(respx_mock: Any, mock_token: Any) -> None:
+    route = respx_mock.post(
+        f"{BASE_URL}/v3/replay/job_01h8x9y2z3a4b5c6d7e8f9g0h1"
+    ).mock(return_value=httpx.Response(202, json={"status": "accepted"}))
+    client = make_client()
+    client.verifications.replay("job_01h8x9y2z3a4b5c6d7e8f9g0h1")
+    request = route.calls.last.request
+    assert request.content == b""
+    assert "content-type" not in request.headers
 
 
 def test_token_endpoint_lowercase_headers_and_no_body(respx_mock: Any) -> None:
