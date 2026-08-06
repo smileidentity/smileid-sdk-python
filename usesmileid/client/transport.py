@@ -182,8 +182,6 @@ class Transport:
         }
         if request.body_kind == "multipart":
             build_kwargs["files"] = self._multipart_files(request)
-        elif request.body_kind == "json" and request.json_body is not None:
-            build_kwargs["json"] = request.json_body
 
         return self._client.build_request(request.method, url, **build_kwargs)
 
