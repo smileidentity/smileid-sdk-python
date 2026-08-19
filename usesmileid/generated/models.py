@@ -53,8 +53,12 @@ class JobStatus(_WireModel):
 
     @property
     def is_complete(self) -> bool:
-        """True once the job is terminal: neither ``processing`` nor ``not_found``."""
-        return self.status not in ("processing", "not_found")
+        """True once the job is terminal: neither ``processing`` nor ``not_found``.
+
+        An empty status is never terminal — a truncated response must not stop
+        a poller with no decision to report.
+        """
+        return bool(self.status) and self.status not in ("processing", "not_found")
 
     @property
     def is_processing(self) -> bool:
