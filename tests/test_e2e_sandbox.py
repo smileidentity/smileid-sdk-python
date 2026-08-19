@@ -5,7 +5,7 @@ environment variables. Skips cleanly when they are not set. Credential values
 are never printed or logged.
 
 Targets the sandbox by default. Set SMILE_BASE_URL to point the run at another
-environment, for example https://devapi.smileidentity.com.
+environment, for example https://your-environment.example.com.
 """
 
 from __future__ import annotations

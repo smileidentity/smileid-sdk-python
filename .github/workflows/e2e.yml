@@ -1,0 +1,47 @@
+# Live end-to-end test against a real Smile ID environment. Runs on pushes to
+# main and nightly so live-API drift is caught outside the PR loop — fork PRs
+# get no secrets, so this never runs on pull_request.
+
+name: E2E Sandbox
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '23 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    if: github.repository == 'smileidentity/smileid-sdk-python'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Install package
+        run: pip install -e ".[dev]"
+      - name: Run live sandbox E2E
+        env:
+          SMILE_PARTNER_ID: ${{ secrets.SMILE_PARTNER_ID }}
+          SMILE_API_KEY: ${{ secrets.SMILE_API_KEY }}
+          SMILE_BASE_URL: ${{ secrets.SMILE_E2E_BASE_URL }}
+        run: |
+          set -o pipefail
+          python -m pytest tests/test_e2e_sandbox.py -v -ra | tee pytest-output.txt
+          # A skip exits 0, so a passing pytest run alone doesn't prove the
+          # test executed against real creds. Fail the job unless the summary
+          # line shows exactly one passed test.
+          if ! grep -q "1 passed" pytest-output.txt; then
+            echo "::error::E2E test did not report '1 passed' (skipped or failed) — check SMILE_PARTNER_ID/SMILE_API_KEY secrets."
+            exit 1
+          fi

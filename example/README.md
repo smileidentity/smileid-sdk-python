@@ -31,7 +31,7 @@ Partner IDs are displayed zero-padded in the portal (for example `002`) but must
 `SMILE_BASE_URL` points the SDK at a specific Smile ID environment. The only named environments are sandbox (the default) and production, so use this to reach anything else:
 
 ```bash
-export SMILE_BASE_URL="https://devapi.smileidentity.com"
+export SMILE_BASE_URL="https://your-environment.example.com"
 ```
 
 Optional:
