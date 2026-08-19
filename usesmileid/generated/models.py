@@ -39,7 +39,11 @@ class AcceptedResponse(_WireModel):
 class JobStatus(_WireModel):
     """GET /v3/status response.
 
-    ``status`` is one of ``complete``, ``processing`` or ``not_found``.
+    ``status`` is ``processing`` while the job runs and ``not_found`` for a job
+    the API does not know about. Any other value is the terminal decision, and
+    the decision is the status itself: ``clear``, ``block``, ``attention`` or
+    ``error``. ``message`` carries no sub-state — it reads "Job completed" on
+    every finished job.
     """
 
     status: str
@@ -49,7 +53,8 @@ class JobStatus(_WireModel):
 
     @property
     def is_complete(self) -> bool:
-        return self.status == "complete"
+        """True once the job is terminal: neither ``processing`` nor ``not_found``."""
+        return self.status not in ("processing", "not_found")
 
     @property
     def is_processing(self) -> bool:

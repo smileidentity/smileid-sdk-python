@@ -32,6 +32,8 @@ smile = usesmileid.Client(
 )
 ```
 
+Partner IDs are displayed zero-padded in the portal (for example `002`) but must be passed without leading zeros (`2`).
+
 ### Environment selection
 
 The client targets the sandbox by default. Set `environment="production"` to go live:
@@ -39,7 +41,19 @@ The client targets the sandbox by default. Set `environment="production"` to go 
 - `sandbox` → `https://testapi.smileidentity.com`
 - `production` → `https://api.smileidentity.com`
 
-You can pass `base_url` to override the URL entirely (it wins over `environment`). The value must be an absolute `https` URL with no query or fragment — anything else raises `usesmileid.errors.ValidationError` at construction. There is deliberately no way to turn this off: partner credentials and personal data travel on every request. `environment` must be `"sandbox"` or `"production"`; any other value is rejected at construction.
+### Base URL override
+
+Only `sandbox` and `production` are named environments. To reach any other Smile ID environment, pass `base_url` — it wins over `environment`:
+
+```python
+smile = usesmileid.Client(
+    partner_id="2",
+    api_key=os.environ["SMILE_API_KEY"],
+    base_url="https://devapi.smileidentity.com",
+)
+```
+
+The value must be an absolute `https` URL with no query or fragment — anything else raises `usesmileid.errors.ValidationError` at construction. There is deliberately no way to turn this off: partner credentials and personal data travel on every request. `environment` must be `"sandbox"` or `"production"`; any other value is rejected at construction.
 
 ### Callback URLs
 
@@ -70,8 +84,14 @@ consent = usesmileid.Consent.granted(
     notice_language="EN",
     notice_privacy_policy_url="https://example.com/privacy",
 )
-user_details = {"given_names": "John", "last_name": "Doe", "email": "john@example.com"}
+user_details = {
+    "given_names": "Amina Fatou",
+    "last_name": "Clearwater",
+    "email": "amina.clearwater@example.com",
+}
 ```
+
+Non-production environments match test identities on given names, last name and email. An identity they do not recognise resolves to `block`.
 
 The examples below assume `smile`, `consent` and `user_details` are defined as above.
 
@@ -191,14 +211,16 @@ accepted = smile.biometric.compare(
 
 ```python
 status = smile.verifications.retrieve("job_01h8x9y2z3a4b5c6d7e8f9g0h1")
-print(status.status)  # "complete", "processing" or "not_found"
+print(status.status)  # "processing", "not_found", or the decision
 ```
+
+A running job reports `status="processing"`. Once it finishes, `status` is the decision itself: `clear`, `block`, `attention` or `error`. `message` reads "Job completed" on every finished job, so read the decision from `status`, not from `message`.
 
 A job that is not found returns a `JobStatus` with `status="not_found"` — it does not raise an error, so polling can distinguish "not found yet" cleanly.
 
 ### Wait for a verification to complete
 
-Polls the status endpoint until the job completes. Raises `usesmileid.errors.TimeoutError` if it does not complete in time.
+Polls the status endpoint while the job is `processing` or `not_found`, and returns as soon as it reaches a decision. `status.is_complete` is true for any decision. Raises `usesmileid.errors.TimeoutError` if the job does not finish in time.
 
 ```python
 status = smile.verifications.wait_until_complete(
@@ -206,7 +228,7 @@ status = smile.verifications.wait_until_complete(
     interval=2.0,   # seconds between polls
     timeout=60.0,   # give up after this many seconds
 )
-print(status.message)
+print(status.status)  # "clear"
 ```
 
 By default a `not_found` status is treated as "not found yet" and polling continues; pass `treat_not_found_as_pending=False` to return it immediately.

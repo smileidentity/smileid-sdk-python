@@ -187,12 +187,20 @@ def print_usage(stdout: TextIO) -> None:
         """Usage:
   smileid-example-python [global flags] services --country NG
   smileid-example-python [global flags] enhanced-kyc --country NG --id-type NIN \
---id-number 12345678901 --given-names Amina --last-name Okafor \
---email amina@example.com --privacy-url https://example.com/privacy
+--id-number 12345678901 --given-names "Amina Fatou" --last-name Clearwater \
+--email amina.clearwater@example.com --privacy-url https://example.com/privacy
   smileid-example-python [global flags] status --job-id job_...
   smileid-example-python [global flags] replay --job-id job_... --callback-url https://example.com/webhook
 
 Global flags can also be set with SMILE_PARTNER_ID, SMILE_API_KEY,
 SMILE_BASE_URL, SMILE_CALLBACK_URL and SMILE_TIMEOUT.
+
+Partner IDs are displayed zero-padded (for example 002) but must be passed
+without leading zeros (2). SMILE_BASE_URL picks the environment; sandbox and
+production are the only named ones, so use it for anything else, for example
+https://devapi.smileidentity.com.
+
+Non-production environments match test identities on given names, last name
+and email. An identity they do not recognise resolves to block.
 """
     )

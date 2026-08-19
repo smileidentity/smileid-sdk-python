@@ -19,7 +19,9 @@ def wait_until_complete(
 ) -> JobStatus:
     """Poll ``retrieve`` until the job completes.
 
-    Returns the terminal :class:`JobStatus`. When ``treat_not_found_as_pending``
+    Keeps polling while the status is ``processing`` or ``not_found``, and
+    returns the terminal :class:`JobStatus` on anything else — ``clear``,
+    ``block``, ``attention`` or ``error``. When ``treat_not_found_as_pending``
     is false, a ``not_found`` result is returned immediately. Raises
     :class:`usesmileid.errors.TimeoutError` if the job does not complete within
     ``timeout`` seconds.
@@ -27,7 +29,7 @@ def wait_until_complete(
     deadline = time.monotonic() + timeout
     while True:
         status = retrieve(job_id)
-        if status.status == "complete":
+        if status.is_complete:
             return status
         if status.status == "not_found" and not treat_not_found_as_pending:
             return status

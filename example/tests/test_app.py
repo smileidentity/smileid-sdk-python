@@ -45,11 +45,11 @@ def test_enhanced_kyc_submits_verification() -> None:
             "--id-number",
             "12345678901",
             "--given-names",
-            "Amina",
+            "Amina Fatou",
             "--last-name",
-            "Okafor",
+            "Clearwater",
             "--email",
-            "amina@example.com",
+            "amina.clearwater@example.com",
         ],
         getenv=example_env,
         stdout=out,
@@ -65,7 +65,7 @@ def test_enhanced_kyc_submits_verification() -> None:
     assert 'name="country"\r\n\r\nNG' in body
     assert 'name="id_type"\r\n\r\nNIN' in body
     assert 'name="callback_url"\r\n\r\nhttps://example.com/smile-callback' in body
-    assert '"given_names":"Amina"' in body
+    assert '"given_names":"Amina Fatou"' in body
 
 
 def test_status_retrieves_verification() -> None:
@@ -79,8 +79,8 @@ def test_status_retrieves_verification() -> None:
     )
 
     result = json.loads(out.getvalue())
-    assert result["status"] == "complete"
-    assert result["message"] == "clear"
+    assert result["status"] == "clear"
+    assert result["message"] == "Job completed"
 
 
 def test_replay_requests_callback_replay() -> None:
@@ -201,8 +201,8 @@ class FakeSmileAPI:
             return response(
                 200,
                 {
-                    "status": "complete",
-                    "message": "clear",
+                    "status": "clear",
+                    "message": "Job completed",
                     "job_id": "job_enhanced_123",
                     "user_id": "user_123",
                 },
