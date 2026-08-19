@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: e2e-${{ github.ref }}
+  group: e2e-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -25,6 +25,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
@@ -41,7 +43,7 @@ jobs:
           # A skip exits 0, so a passing pytest run alone doesn't prove the
           # test executed against real creds. Fail the job unless the summary
           # line shows exactly one passed test.
-          if ! grep -q "1 passed" pytest-output.txt; then
+          if ! grep -qE '(^| )1 passed( |$)' pytest-output.txt; then
             echo "::error::E2E test did not report '1 passed' (skipped or failed) — check SMILE_PARTNER_ID/SMILE_API_KEY secrets."
             exit 1
           fi
