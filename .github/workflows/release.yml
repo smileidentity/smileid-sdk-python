@@ -6,10 +6,17 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      # vX.Y.Z plus any PEP 440 suffix (v1.2.3rc1, v1.2.3.post1). Keeps a
+      # stray tag like `vtest` from starting a publish job at all.
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
 
 permissions:
   contents: read
+
+# One publish at a time per tag, so a re-pushed tag can't race itself.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   release:
@@ -48,8 +55,14 @@ jobs:
 
       - name: Build sdist and wheel
         run: |
-          pip install build
+          # Clear anything an earlier step left behind, so `twine check` and
+          # the publish below only ever see this build's artefacts.
+          rm -rf dist build
+          pip install build twine
           python -m build
+          # Catches broken metadata or an unrenderable README before the
+          # upload, which PyPI will not let us replace.
+          twine check --strict dist/*
 
       - name: Smoke-test built wheel
         run: |
@@ -66,6 +79,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           if ! gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes
+            gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+              --verify-tag --generate-notes
           fi
