@@ -17,11 +17,17 @@ PROCESSING = {
     "user_id": "user_x",
     "message": "Verification is still processing",
 }
-COMPLETE = {
-    "status": "complete",
+CLEAR = {
+    "status": "clear",
     "job_id": JOB_ID,
     "user_id": "user_x",
-    "message": "Verification completed with state: clear",
+    "message": "Job completed",
+}
+BLOCK = {
+    "status": "block",
+    "job_id": JOB_ID,
+    "user_id": "user_x",
+    "message": "Job completed",
 }
 NOT_FOUND = {
     "status": "not_found",
@@ -36,26 +42,41 @@ def _fast_poll(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("usesmileid.helpers.polling.time.sleep", lambda *_a: None)
 
 
-def test_polls_until_complete(respx_mock: Any, mock_token: Any) -> None:
+def test_polls_until_clear(respx_mock: Any, mock_token: Any) -> None:
     route = respx_mock.get(f"{BASE_URL}/v3/status/{JOB_ID}").mock(
         side_effect=[
             httpx.Response(202, json=PROCESSING),
             httpx.Response(202, json=PROCESSING),
-            httpx.Response(200, json=COMPLETE),
+            httpx.Response(200, json=CLEAR),
         ]
     )
     client = make_client()
     result = client.verifications.wait_until_complete(JOB_ID, interval=0.01)
     assert result.is_complete
-    assert result.message == "Verification completed with state: clear"
+    assert result.status == "clear"
+    assert result.message == "Job completed"
     assert route.call_count == 3
+
+
+def test_polls_until_block(respx_mock: Any, mock_token: Any) -> None:
+    route = respx_mock.get(f"{BASE_URL}/v3/status/{JOB_ID}").mock(
+        side_effect=[
+            httpx.Response(202, json=PROCESSING),
+            httpx.Response(200, json=BLOCK),
+        ]
+    )
+    client = make_client()
+    result = client.verifications.wait_until_complete(JOB_ID, interval=0.01)
+    assert result.is_complete
+    assert result.status == "block"
+    assert route.call_count == 2
 
 
 def test_not_found_treated_as_pending_by_default(respx_mock: Any, mock_token: Any) -> None:
     route = respx_mock.get(f"{BASE_URL}/v3/status/{JOB_ID}").mock(
         side_effect=[
             httpx.Response(404, json=NOT_FOUND),
-            httpx.Response(200, json=COMPLETE),
+            httpx.Response(200, json=CLEAR),
         ]
     )
     client = make_client()
@@ -99,7 +120,7 @@ def test_interval_is_respected(
     respx_mock.get(f"{BASE_URL}/v3/status/{JOB_ID}").mock(
         side_effect=[
             httpx.Response(202, json=PROCESSING),
-            httpx.Response(200, json=COMPLETE),
+            httpx.Response(200, json=CLEAR),
         ]
     )
     client = make_client()

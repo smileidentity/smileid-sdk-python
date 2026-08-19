@@ -325,7 +325,11 @@ class VerificationsResource(_Resource):
         timeout: float = 60.0,
         treat_not_found_as_pending: bool = True,
     ) -> JobStatus:
-        """Poll retrieve until the job completes."""
+        """Poll retrieve until the job reaches a terminal status.
+
+        Polls while the status is ``processing`` or ``not_found``, and returns
+        on any other status (``clear``, ``block``, ``attention`` or ``error``).
+        """
         return wait_until_complete(
             self.retrieve,
             job_id,

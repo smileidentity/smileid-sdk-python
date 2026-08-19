@@ -167,7 +167,7 @@ def test_retrieve_not_found_path_unaffected(respx_mock: Any, mock_token: Any) ->
 def test_job_id_is_path_encoded(respx_mock: Any, mock_token: Any) -> None:
     encoded = "job%20x%2F..%2Fy%3Fq"
     route = respx_mock.get(f"{BASE_URL}/v3/status/{encoded}").mock(
-        return_value=httpx.Response(200, json={"status": "complete"})
+        return_value=httpx.Response(200, json={"status": "clear"})
     )
     client = make_client()
     client.verifications.retrieve("job x/../y?q")
@@ -191,7 +191,7 @@ def test_user_id_is_path_encoded_for_report_fraud(
 def test_golden_ids_stay_byte_identical(respx_mock: Any, mock_token: Any) -> None:
     job_id = "job_01h8x9y2z3a4b5c6d7e8f9g0h1"
     route = respx_mock.get(f"{BASE_URL}/v3/status/{job_id}").mock(
-        return_value=httpx.Response(200, json={"status": "complete"})
+        return_value=httpx.Response(200, json={"status": "clear"})
     )
     client = make_client()
     client.verifications.retrieve(job_id)

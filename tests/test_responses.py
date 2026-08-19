@@ -7,7 +7,7 @@ from typing import Any
 import httpx
 
 from tests.conftest import BASE_URL, consent_dict, make_client, user_details_dict
-from usesmileid.generated.models import AcceptedResponse
+from usesmileid.generated.models import AcceptedResponse, JobStatus
 
 
 def test_is_accepted_normalizes_capitalized_status() -> None:
@@ -40,6 +40,21 @@ def test_is_accepted_normalizes_lowercase_status() -> None:
 def test_is_accepted_false_for_other_status() -> None:
     response = AcceptedResponse.model_validate({"status": "rejected"})
     assert response.is_accepted is False
+
+
+def test_is_complete_true_for_every_decision() -> None:
+    for decision in ("clear", "block", "attention", "error"):
+        assert JobStatus.model_validate({"status": decision}).is_complete is True
+
+
+def test_is_complete_false_while_pending() -> None:
+    for pending in ("processing", "not_found"):
+        assert JobStatus.model_validate({"status": pending}).is_complete is False
+
+
+def test_is_complete_false_for_empty_status() -> None:
+    # A truncated response must not stop a poller with no decision to report.
+    assert JobStatus.model_validate({"status": ""}).is_complete is False
 
 
 def test_golden_enhanced_kyc_success_parsing(respx_mock: Any, mock_token: Any) -> None:
