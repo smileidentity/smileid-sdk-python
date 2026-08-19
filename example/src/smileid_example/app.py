@@ -198,7 +198,7 @@ SMILE_BASE_URL, SMILE_CALLBACK_URL and SMILE_TIMEOUT.
 Partner IDs are displayed zero-padded (for example 002) but must be passed
 without leading zeros (2). SMILE_BASE_URL picks the environment; sandbox and
 production are the only named ones, so use it for anything else, for example
-https://devapi.smileidentity.com.
+https://your-environment.example.com.
 
 Non-production environments match test identities on given names, last name
 and email. An identity they do not recognise resolves to block.

@@ -49,7 +49,7 @@ Only `sandbox` and `production` are named environments. To reach any other Smile
 smile = usesmileid.Client(
     partner_id="2",
     api_key=os.environ["SMILE_API_KEY"],
-    base_url="https://devapi.smileidentity.com",
+    base_url="https://your-environment.example.com",
 )
 ```
 
