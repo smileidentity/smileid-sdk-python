@@ -29,9 +29,9 @@ def wait_until_complete(
     deadline = time.monotonic() + timeout
     while True:
         status = retrieve(job_id)
-        if status.is_complete:
-            return status
         if status.status == "not_found" and not treat_not_found_as_pending:
+            return status
+        if status.is_complete:
             return status
         if time.monotonic() >= deadline:
             raise TimeoutError(
