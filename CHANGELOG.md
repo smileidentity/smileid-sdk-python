@@ -6,35 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-### Security
+## [12.0.0] - 2026-08-20
 
-- `base_url` must now be an absolute https URL with no query or fragment,
-  validated at construction. There is deliberately no insecure override.
-- `default_callback_url` and per-request `callback_url` values must be https;
-  invalid values raise `ValidationError` before any request is sent.
-- `job_id` and `user_id` path parameters are URL-encoded as single path
-  segments before interpolation.
-- Multipart part filenames and content types are sanitized against header
-  injection (CR, LF, quotes).
-
-### Changed
-
-- Added `smileid.errors.UnexpectedResponseError`, raised when a success (2xx)
-  response body is not a JSON object, with `status_code`, `raw_body` and
-  `request_id` populated.
-
-- Renamed the PyPI package from `smile-identity-core` to `smileid`, matching
-  the importable module.
-- Set the version to 12.0.0, aligning the server SDKs with the V12 mobile
-  SDKs.
+First public release of the Smile ID Python server SDK.
 
 ### Added
 
-- Initial implementation of the V3 SDK: all 14 public operations under
-  `client.<resource>.<verb>`, plus `flag_fraud` / `clear_fraud` wrappers.
-- Automatic token management: fetch, thread-safe cache to expiry, one
-  refresh-and-retry on 401.
-- Typed error hierarchy under `smileid.errors`.
-- Retry policy for idempotent operations with `Retry-After` support.
-- `verifications.wait_until_complete` polling helper, `Consent` builder and
-  client-side validation for user details and fraud reports.
+- Products: Enhanced KYC, Biometric KYC, Document Verification, Enhanced
+  Document Verification, and SmartSelfie enrollment, authentication and
+  comparison.
+- Job status retrieval, with a `wait_until_complete` helper that polls until
+  a job reaches a decision.
+- Callback replay for completed jobs.
+- User fraud reporting, with `flag_fraud` and `clear_fraud` convenience
+  wrappers.
+- Bank code, supported ID type and supported document lookups, and ID type
+  availability checks.
+- Sandbox and production environments, plus a `base_url` override for other
+  Smile ID environments.
+- A typed error hierarchy, covering client-side validation and every HTTP
+  error the API returns.
+- Automatic token management and retries for idempotent operations.
+
+[Unreleased]: https://github.com/smileidentity/smileid-sdk-python/compare/v12.0.0...HEAD
+[12.0.0]: https://github.com/smileidentity/smileid-sdk-python/releases/tag/v12.0.0
