@@ -4,8 +4,8 @@ Binary inputs accept a file path, a bytes buffer, or a file-like object, and are
 normalized to ``(filename, bytes, content_type)`` tuples.
 
 Content-type policy: ``selfie_image``, ``liveness_images`` and
-``comparison_image`` are always ``image/jpeg``. Only ``document`` and
-``document_back`` may be ``image/png``, detected from the PNG magic bytes or a
+``comparison_image`` are always ``image/jpeg``. Only ``document``,
+``document_back`` and ``visa`` may be ``image/png``, detected from the PNG magic bytes or a
 ``.png`` file extension (pass ``allow_png=True``).
 """
 

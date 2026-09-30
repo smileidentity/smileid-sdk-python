@@ -188,8 +188,11 @@ class DocumentsResource(_Resource):
     ) -> AcceptedResponse:
         """POST /v3/residency_document_verification. The document must be a
         passport and the visa image is required."""
+        id_type = id_type or "PASSPORT"
         if id_type != "PASSPORT":
             raise ValidationError("id_type must be PASSPORT for verify_residency")
+        if visa is None:
+            raise ValidationError("visa is required for verify_residency")
         request = operations.residency_document_verification(
             selfie_image=_selfie(selfie_image),
             liveness_images=_liveness(liveness_images),
@@ -500,7 +503,7 @@ def _selfie(value: Any, default_filename: str = "selfie.jpg") -> Any:
 
 
 def _document(value: Any, default_filename: str) -> Any:
-    """document / document_back are the only fields that may be PNG."""
+    """document, document_back and visa are the only fields that may be PNG."""
     return normalize_binary(value, default_filename=default_filename, allow_png=True)
 
 
