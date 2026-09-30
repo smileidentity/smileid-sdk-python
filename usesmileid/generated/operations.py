@@ -188,6 +188,42 @@ def enhanced_document_verification(
     return req
 
 
+def residency_document_verification(
+    *,
+    selfie_image: BinaryPart,
+    liveness_images: List[BinaryPart],
+    document: BinaryPart,
+    visa: BinaryPart,
+    consent: dict,
+    country: str,
+    id_type: str,
+    user_details: dict,
+    document_back: Optional[BinaryPart] = None,
+    callback_url: Optional[str] = None,
+    partner_params: Optional[dict] = None,
+    metadata: Optional[list] = None,
+    user_id: Optional[str] = None,
+) -> Request:
+    """POST /v3/residency_document_verification. id_type must be PASSPORT; visa required."""
+    req = document_verification(
+        selfie_image=selfie_image,
+        liveness_images=liveness_images,
+        document=document,
+        consent=consent,
+        country=country,
+        user_details=user_details,
+        document_back=document_back,
+        id_type=id_type,
+        callback_url=callback_url,
+        partner_params=partner_params,
+        metadata=metadata,
+        user_id=user_id,
+    )
+    req.path = "/v3/residency_document_verification"
+    _add_binary(req, "visa", visa)
+    return req
+
+
 def biometric_kyc(
     *,
     selfie_image: BinaryPart,

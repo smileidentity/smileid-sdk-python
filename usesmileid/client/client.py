@@ -168,6 +168,47 @@ class DocumentsResource(_Resource):
         return AcceptedResponse.model_validate(parse_success_json(response))
 
 
+    def verify_residency(
+        self,
+        *,
+        selfie_image: Any,
+        liveness_images: Any,
+        document: Any,
+        visa: Any,
+        consent: ConsentInput,
+        country: str,
+        user_details: UserDetailsInput,
+        document_back: Any = None,
+        id_type: str = "PASSPORT",
+        callback_url: Optional[str] = None,
+        partner_params: Optional[dict] = None,
+        metadata: Optional[list] = None,
+        user_id: Optional[str] = None,
+        timeout: Optional[float] = None,
+    ) -> AcceptedResponse:
+        """POST /v3/residency_document_verification. The document must be a
+        passport and the visa image is required."""
+        if id_type != "PASSPORT":
+            raise ValidationError("id_type must be PASSPORT for verify_residency")
+        request = operations.residency_document_verification(
+            selfie_image=_selfie(selfie_image),
+            liveness_images=_liveness(liveness_images),
+            document=_document(document, "document.jpg"),
+            document_back=_document(document_back, "document_back.jpg"),
+            visa=_document(visa, "visa.jpg"),
+            consent=_consent_dict(consent),
+            country=country,
+            id_type=id_type,
+            user_details=normalize_user_details(user_details),
+            callback_url=self._callback(callback_url),
+            partner_params=partner_params,
+            metadata=metadata,
+            user_id=user_id,
+        )
+        response = self._transport.send(request, timeout=timeout)
+        return AcceptedResponse.model_validate(parse_success_json(response))
+
+
 class BiometricKycResource(_Resource):
     def verify(
         self,

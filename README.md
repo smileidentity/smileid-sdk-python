@@ -146,6 +146,23 @@ accepted = smile.documents.verify_enhanced(
 )
 ```
 
+### Residency document verification
+
+Same as document verification, plus the visa endorsed in the passport. `visa` is required and `id_type` must be `PASSPORT` (the default). Results take longer than document verification, so rely on the callback rather than polling.
+
+```python
+accepted = smile.documents.verify_residency(
+    selfie_image="selfie.jpg",
+    liveness_images=["live1.jpg", "live2.jpg", "live3.jpg",
+                     "live4.jpg", "live5.jpg", "live6.jpg"],
+    document="passport_front.jpg",
+    visa="visa_page.jpg",
+    country="ZA",
+    user_details=user_details,
+    consent=consent,
+)
+```
+
 ### Biometric KYC
 
 Verify a selfie against the photo on file with an ID authority.

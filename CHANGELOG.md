@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Residency Document Verification: `documents.verify_residency`.
+
 ## [12.0.0] - 2026-08-20
 
 First public release of the Smile ID Python server SDK.
