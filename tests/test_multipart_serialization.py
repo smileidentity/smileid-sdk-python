@@ -107,6 +107,32 @@ def test_document_verification_repeated_liveness_and_partner_id(
     assert request.headers["SmileID-Partner-ID"] == "1234"
 
 
+def test_residency_document_verification_sends_visa(respx_mock: Any, mock_token: Any) -> None:
+    route = respx_mock.post(f"{BASE_URL}/v3/residency_document_verification").mock(
+        return_value=httpx.Response(202, json=ACCEPTED_LOWER)
+    )
+    png = b"\x89PNG\r\n\x1a\n" + b"body"
+    client = make_client()
+    client.documents.verify_residency(
+        selfie_image=JPEG_BYTES,
+        liveness_images=LIVENESS,
+        document=JPEG_BYTES,
+        visa=png,
+        consent=consent_dict(),
+        country="ZA",
+        user_details=user_details_dict(),
+    )
+
+    request = route.calls.last.request
+    parts = parse_multipart(request)
+    by_name = {p["name"]: p for p in parts}
+    assert by_name["id_type"]["body"] == b"PASSPORT"
+    assert by_name["visa"]["content_type"] == "image/png"
+    assert by_name["visa"]["filename"] == "visa.jpg"
+    assert part_names(parts).count("liveness_images") == 6
+    assert request.headers["SmileID-Partner-ID"] == "1234"
+
+
 def test_document_back_png_detected(respx_mock: Any, mock_token: Any) -> None:
     route = respx_mock.post(f"{BASE_URL}/v3/document_verification").mock(
         return_value=httpx.Response(202, json=ACCEPTED_LOWER)

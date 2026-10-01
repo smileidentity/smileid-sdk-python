@@ -169,3 +169,32 @@ def test_verify_enhanced_requires_id_type(respx_mock: Any, mock_token: Any) -> N
             id_type="",
             user_details={"given_names": "John", "last_name": "Doe", "email": "john@example.com"},
         )
+
+
+def test_verify_residency_requires_passport(respx_mock: Any, mock_token: Any) -> None:
+    client = make_client()
+    with pytest.raises(usesmileid.errors.ValidationError):
+        client.documents.verify_residency(
+            selfie_image=JPEG_BYTES,
+            liveness_images=LIVENESS,
+            document=JPEG_BYTES,
+            visa=JPEG_BYTES,
+            consent=consent_dict(),
+            country="ZA",
+            id_type="DRIVERS_LICENSE",
+            user_details={"given_names": "John", "last_name": "Doe", "email": "john@example.com"},
+        )
+
+
+def test_verify_residency_requires_visa(respx_mock: Any, mock_token: Any) -> None:
+    client = make_client()
+    with pytest.raises(usesmileid.errors.ValidationError):
+        client.documents.verify_residency(
+            selfie_image=JPEG_BYTES,
+            liveness_images=LIVENESS,
+            document=JPEG_BYTES,
+            visa=None,
+            consent=consent_dict(),
+            country="NG",
+            user_details={"given_names": "John", "last_name": "Doe", "email": "john@example.com"},
+        )
