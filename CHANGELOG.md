@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [12.1.0] - 2026-10-01
+
 ### Added
 
 - Residency Document Verification: `documents.verify_residency`.
@@ -32,5 +34,6 @@ First public release of the Smile ID Python server SDK.
   error the API returns.
 - Automatic token management and retries for idempotent operations.
 
-[Unreleased]: https://github.com/smileidentity/smileid-sdk-python/compare/v12.0.0...HEAD
+[Unreleased]: https://github.com/smileidentity/smileid-sdk-python/compare/v12.1.0...HEAD
+[12.1.0]: https://github.com/smileidentity/smileid-sdk-python/compare/v12.0.0...v12.1.0
 [12.0.0]: https://github.com/smileidentity/smileid-sdk-python/releases/tag/v12.0.0
