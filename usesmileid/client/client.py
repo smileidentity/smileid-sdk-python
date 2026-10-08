@@ -216,13 +216,14 @@ class BiometricKycResource(_Resource):
     def verify(
         self,
         *,
-        selfie_image: Any,
-        liveness_images: Any,
         consent: ConsentInput,
         country: str,
         id_type: str,
         id_number: str,
         user_details: UserDetailsInput,
+        selfie_image: Any = None,
+        liveness_images: Any = None,
+        use_enrolled_image: bool = False,
         callback_url: Optional[str] = None,
         sandbox_result: Optional[float] = None,
         partner_params: Optional[dict] = None,
@@ -230,10 +231,24 @@ class BiometricKycResource(_Resource):
         user_id: Optional[str] = None,
         timeout: Optional[float] = None,
     ) -> AcceptedResponse:
-        """POST /v3/biometric_kyc."""
+        """POST /v3/biometric_kyc.
+
+        With ``use_enrolled_image=True`` the job verifies against ``user_id``'s
+        enrolled selfie, so the selfie and liveness images may be omitted. The
+        grant is bound into this job's token, which names ``user_id``.
+        """
+        if use_enrolled_image:
+            if not user_id:
+                raise ValidationError("user_id is required when use_enrolled_image is true")
+        elif selfie_image is None or liveness_images is None:
+            raise ValidationError(
+                "selfie_image and liveness_images are required "
+                "unless use_enrolled_image is true"
+            )
         request = operations.biometric_kyc(
             selfie_image=_selfie(selfie_image),
             liveness_images=_liveness(liveness_images),
+            use_enrolled_image=use_enrolled_image,
             consent=_consent_dict(consent),
             country=country,
             id_type=id_type,
@@ -289,7 +304,6 @@ class BiometricResource(_Resource):
         user_details: UserDetailsInput,
         selfie_image: Any = None,
         liveness_images: Any = None,
-        use_enrolled_image: Optional[bool] = None,
         callback_url: Optional[str] = None,
         sandbox_result: Optional[float] = None,
         partner_params: Optional[dict] = None,
@@ -297,19 +311,14 @@ class BiometricResource(_Resource):
         timeout: Optional[float] = None,
     ) -> AcceptedResponse:
         """POST /v3/authentication. user_id in body."""
-        if not use_enrolled_image:
-            if selfie_image is None or liveness_images is None:
-                raise ValidationError(
-                    "selfie_image and liveness_images are required "
-                    "unless use_enrolled_image is true"
-                )
+        if selfie_image is None or liveness_images is None:
+            raise ValidationError("selfie_image and liveness_images are required")
         request = operations.authentication(
             user_id=user_id,
             consent=_consent_dict(consent),
             user_details=normalize_user_details(user_details),
             selfie_image=_selfie(selfie_image),
             liveness_images=_liveness(liveness_images),
-            use_enrolled_image=use_enrolled_image,
             callback_url=self._callback(callback_url),
             sandbox_result=sandbox_result,
             partner_params=partner_params,

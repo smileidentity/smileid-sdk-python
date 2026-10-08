@@ -36,6 +36,10 @@ class Request:
     binary_parts: List[Tuple[str, str, bytes, str]] = field(default_factory=list)
     body_kind: str = "none"  # "multipart" | "none"
     ok_statuses: Tuple[int, ...] = (200, 202)
+    # Claims bound into the token minted for this one request.
+    product: Optional[str] = None
+    token_user_id: Optional[str] = None
+    use_enrolled_image: bool = False
 
 
 def _add_scalar(req: Request, name: str, value: object) -> None:
@@ -66,17 +70,30 @@ def _add_binary_array(req: Request, name: str, parts: Optional[List[BinaryPart]]
         req.binary_parts.append((name, filename, data, content_type))
 
 
-def token(partner_id: str, api_key: str) -> Request:
-    """POST /v3/token — internal. Lowercase headers, no body."""
-    return Request(
+def token(
+    partner_id: str,
+    api_key: str,
+    *,
+    user_id: Optional[str] = None,
+    product: Optional[str] = None,
+    use_enrolled_image: bool = False,
+) -> Request:
+    """POST /v3/token — internal. Lowercase headers; claims to bind in the body."""
+    req = Request(
         method="POST",
         path="/v3/token",
         authenticated=False,
         idempotent=True,
         extra_headers={"smileid-partner-id": partner_id, "smileid-api-key": api_key},
-        body_kind="none",
         ok_statuses=(200,),
     )
+    _add_scalar(req, "user_id", user_id)
+    _add_scalar(req, "product", product)
+    if use_enrolled_image:
+        _add_scalar(req, "use_enrolled_image", True)
+    if req.text_parts:
+        req.body_kind = "multipart"
+    return req
 
 
 def enhanced_kyc(
@@ -100,6 +117,8 @@ def enhanced_kyc(
         authenticated=True,
         idempotent=False,
         user_id_header=user_id,
+        token_user_id=user_id,
+        product="enhanced_kyc",
         body_kind="multipart",
     )
     _add_scalar(req, "country", country)
@@ -138,6 +157,8 @@ def document_verification(
         idempotent=False,
         needs_partner_id_header=True,
         user_id_header=user_id,
+        token_user_id=user_id,
+        product="document_verification",
         body_kind="multipart",
     )
     _add_scalar(req, "country", country)
@@ -185,6 +206,7 @@ def enhanced_document_verification(
         user_id=user_id,
     )
     req.path = "/v3/enhanced_document_verification"
+    req.product = "enhanced_document_verification"
     return req
 
 
@@ -220,26 +242,29 @@ def residency_document_verification(
         user_id=user_id,
     )
     req.path = "/v3/residency_document_verification"
+    req.product = "residency_document_verification"
     _add_binary(req, "visa", visa)
     return req
 
 
 def biometric_kyc(
     *,
-    selfie_image: BinaryPart,
-    liveness_images: List[BinaryPart],
     consent: dict,
     country: str,
     id_type: str,
     id_number: str,
     user_details: dict,
+    selfie_image: Optional[BinaryPart] = None,
+    liveness_images: Optional[List[BinaryPart]] = None,
+    use_enrolled_image: bool = False,
     callback_url: Optional[str] = None,
     sandbox_result: Optional[float] = None,
     partner_params: Optional[dict] = None,
     metadata: Optional[list] = None,
     user_id: Optional[str] = None,
 ) -> Request:
-    """POST /v3/biometric_kyc. Partner-ID header required."""
+    """POST /v3/biometric_kyc. Partner-ID header required. use_enrolled_image is
+    a token claim, not a body field."""
     req = Request(
         method="POST",
         path="/v3/biometric_kyc",
@@ -247,6 +272,9 @@ def biometric_kyc(
         idempotent=False,
         needs_partner_id_header=True,
         user_id_header=user_id,
+        token_user_id=user_id,
+        product="biometric_kyc",
+        use_enrolled_image=use_enrolled_image,
         body_kind="multipart",
     )
     _add_scalar(req, "country", country)
@@ -283,6 +311,8 @@ def registration(
         authenticated=True,
         idempotent=False,
         user_id_header=user_id,
+        token_user_id=user_id,
+        product="smart_selfie_registration",
         body_kind="multipart",
     )
     _add_scalar(req, "allow_new_enroll", allow_new_enroll)
@@ -302,9 +332,8 @@ def authentication(
     user_id: str,
     consent: dict,
     user_details: dict,
-    selfie_image: Optional[BinaryPart] = None,
-    liveness_images: Optional[List[BinaryPart]] = None,
-    use_enrolled_image: Optional[bool] = None,
+    selfie_image: BinaryPart,
+    liveness_images: List[BinaryPart],
     callback_url: Optional[str] = None,
     sandbox_result: Optional[float] = None,
     partner_params: Optional[dict] = None,
@@ -316,10 +345,11 @@ def authentication(
         path="/v3/authentication",
         authenticated=True,
         idempotent=False,
+        token_user_id=user_id,
+        product="smart_selfie_authentication",
         body_kind="multipart",
     )
     _add_scalar(req, "user_id", user_id)
-    _add_scalar(req, "use_enrolled_image", use_enrolled_image)
     _add_scalar(req, "callback_url", callback_url)
     _add_scalar(req, "sandbox_result", sandbox_result)
     _add_binary(req, "selfie_image", selfie_image)
@@ -352,6 +382,8 @@ def compare(
         path="/v3/compare",
         authenticated=True,
         idempotent=False,
+        token_user_id=user_id,
+        product="smart_selfie_compare",
         body_kind="multipart",
     )
     _add_scalar(req, "comparison_image_type", comparison_image_type)

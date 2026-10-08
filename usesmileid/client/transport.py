@@ -18,7 +18,6 @@ from typing import List, Optional, Tuple
 import httpx
 
 from usesmileid._version import __version__
-from usesmileid.client.auth import TokenManager
 from usesmileid.client.config import ClientConfig
 from usesmileid.errors import (
     ConnectionError,
@@ -47,7 +46,6 @@ class Transport:
         self._config = config
         self._owns_client = http_client is None
         self._client = http_client or httpx.Client(timeout=config.timeout)
-        self.token_manager = TokenManager(self._fetch_token)
         # Base backoff in seconds; tests patch ``time.sleep`` to keep fast.
         self._backoff_base = 0.5
 
@@ -69,9 +67,20 @@ class Transport:
 
     # -- token -------------------------------------------------------------
 
-    def _fetch_token(self) -> str:
-        request = operations.token(self._config.partner_id, self._config.api_key)
-        response = self._send_with_retries(request, timeout=None)
+    def _mint_token(self, request: Request) -> str:
+        """Mint a token bound to this one request's user, product and grant.
+
+        Tokens are never shared between requests: a grant authorises a
+        captureless job for one user, and must not reach any other call.
+        """
+        token_request = operations.token(
+            self._config.partner_id,
+            self._config.api_key,
+            user_id=request.token_user_id,
+            product=request.product,
+            use_enrolled_image=request.use_enrolled_image,
+        )
+        response = self._send_with_retries(token_request, timeout=None)
         if response.status_code != 200:
             raise parse_error(response)
         body = parse_success_json(response)
@@ -87,15 +96,9 @@ class Transport:
     # -- public send -------------------------------------------------------
 
     def send(self, request: Request, *, timeout: Optional[float] = None) -> httpx.Response:
-        """Execute a request, refreshing the token once on a 401."""
-        response: Optional[httpx.Response] = None
-        for auth_attempt in range(2):
-            response = self._send_with_retries(request, timeout=timeout)
-            if response.status_code == 401 and request.authenticated and auth_attempt == 0:
-                self.token_manager.invalidate()
-                continue
-            break
-        assert response is not None
+        """Execute a request, minting its token first when it is authenticated."""
+        token = self._mint_token(request) if request.authenticated else None
+        response = self._send_with_retries(request, timeout=timeout, token=token)
         if response.status_code in request.ok_statuses:
             return response
         raise parse_error(response)
@@ -103,12 +106,12 @@ class Transport:
     # -- retry loop --------------------------------------------------------
 
     def _send_with_retries(
-        self, request: Request, *, timeout: Optional[float]
+        self, request: Request, *, timeout: Optional[float], token: Optional[str] = None
     ) -> httpx.Response:
         attempts = self._config.max_retries + 1 if request.idempotent else 1
         response: Optional[httpx.Response] = None
         for attempt in range(attempts):
-            prepared = self._prepare(request, timeout)
+            prepared = self._prepare(request, timeout, token)
             try:
                 response = self._client.send(prepared)
             except (httpx.TimeoutException, httpx.TransportError) as exc:
@@ -119,8 +122,6 @@ class Transport:
 
             if response.status_code in request.ok_statuses:
                 return response
-            if response.status_code == 401:
-                return response  # send() decides whether to refresh
             if (
                 request.idempotent
                 and attempt < attempts - 1
@@ -162,10 +163,12 @@ class Transport:
 
     # -- request assembly --------------------------------------------------
 
-    def _prepare(self, request: Request, timeout: Optional[float]) -> httpx.Request:
+    def _prepare(
+        self, request: Request, timeout: Optional[float], token: Optional[str]
+    ) -> httpx.Request:
         headers = self._telemetry_headers()
-        if request.authenticated:
-            headers["SmileID-Token"] = self.token_manager.ensure_token()
+        if token is not None:
+            headers["SmileID-Token"] = token
         if request.needs_partner_id_header:
             headers["SmileID-Partner-ID"] = self._config.partner_id
         if request.user_id_header is not None:
