@@ -18,7 +18,7 @@ pip install usesmileid
 
 ## Getting started
 
-Construct one client with your partner ID and API key. The SDK manages authentication for you: it fetches a short-lived token from the Smile ID API, caches it until it expires, and refreshes it automatically. You never handle tokens yourself.
+Construct one client with your partner ID and API key. The SDK manages authentication for you: before each request it fetches a short-lived token from the Smile ID API, bound to that request's user and product. You never handle tokens yourself.
 
 ```python
 import os
@@ -180,6 +180,20 @@ accepted = smile.biometric_kyc.verify(
 )
 ```
 
+To verify against a user's enrolled selfie instead of a fresh capture, set `use_enrolled_image=True` and pass the enrolled `user_id`; the selfie and liveness images may then be omitted.
+
+```python
+accepted = smile.biometric_kyc.verify(
+    use_enrolled_image=True,
+    user_id="user_01h8x9y2z3a4b5c6d7e8f9g0h1",
+    country="NG",
+    id_type="NIN",
+    id_number="12345678901",
+    user_details=user_details,
+    consent=consent,
+)
+```
+
 ### Biometric enrollment
 
 Register a user's selfie for later authentication.
@@ -197,7 +211,7 @@ accepted = smile.biometric.enroll(
 
 ### Biometric authentication
 
-Authenticate a previously enrolled user. Set `use_enrolled_image=True` to re-use the enrolled image instead of uploading a new selfie.
+Authenticate a previously enrolled user against a fresh selfie and liveness capture.
 
 ```python
 accepted = smile.biometric.authenticate(
@@ -345,7 +359,7 @@ except usesmileid.errors.SmileIDError as err:
 |---|---|
 | `InvalidRequestError` | HTTP 400, 415 |
 | `ValidationError` | Client-side validation, before any request is sent |
-| `AuthenticationError` | HTTP 401 (after one automatic token refresh) |
+| `AuthenticationError` | HTTP 401 |
 | `PaymentRequiredError` | HTTP 402 |
 | `PermissionError` | HTTP 403 |
 | `NotFoundError` | HTTP 404 |

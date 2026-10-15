@@ -87,7 +87,7 @@ def test_fraud_notes_length_limit(respx_mock: Any, mock_token: Any) -> None:
         )
 
 
-def test_authenticate_requires_images_unless_enrolled(
+def test_authenticate_requires_images(
     respx_mock: Any, mock_token: Any
 ) -> None:
     client = make_client()
@@ -106,24 +106,35 @@ def test_authenticate_requires_images_unless_enrolled(
     assert not respx_mock.calls
 
 
-def test_authenticate_use_enrolled_image_skips_image_requirement(
+def test_biometric_kyc_requires_images_unless_enrolled(
     respx_mock: Any, mock_token: Any
 ) -> None:
-    import httpx
-
-    from tests.conftest import BASE_URL
-
-    route = respx_mock.post(f"{BASE_URL}/v3/authentication").mock(
-        return_value=httpx.Response(202, json={"status": "Accepted"})
-    )
     client = make_client()
-    client.biometric.authenticate(
-        user_id="user-1",
-        use_enrolled_image=True,
-        consent=consent_dict(),
-        user_details={"given_names": "John", "last_name": "Doe", "email": "john@example.com"},
-    )
-    assert route.called
+    with pytest.raises(usesmileid.errors.ValidationError):
+        client.biometric_kyc.verify(
+            country="NG",
+            id_type="NIN",
+            id_number="12345678901",
+            consent=consent_dict(),
+            user_details={"given_names": "John", "last_name": "Doe", "email": "john@example.com"},
+        )
+    assert not respx_mock.calls
+
+
+def test_biometric_kyc_enrolled_image_requires_user_id(
+    respx_mock: Any, mock_token: Any
+) -> None:
+    client = make_client()
+    with pytest.raises(usesmileid.errors.ValidationError, match="user_id"):
+        client.biometric_kyc.verify(
+            use_enrolled_image=True,
+            country="NG",
+            id_type="NIN",
+            id_number="12345678901",
+            consent=consent_dict(),
+            user_details={"given_names": "John", "last_name": "Doe", "email": "john@example.com"},
+        )
+    assert not respx_mock.calls
 
 
 def test_authenticate_with_images_sends_them(respx_mock: Any, mock_token: Any) -> None:

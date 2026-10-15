@@ -1,7 +1,7 @@
 """Hand-written client layer: configuration, transport, auth.
 
 This tree owns everything a code generator must not touch: the HTTP transport
-and the JWT lifecycle.
+and per-request token minting.
 """
 
 from usesmileid.client.client import Client
