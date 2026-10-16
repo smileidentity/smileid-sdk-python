@@ -18,7 +18,7 @@ pip install usesmileid
 
 ## Getting started
 
-Construct one client with your partner ID and API key. The SDK manages authentication for you: before each request it fetches a short-lived token from the Smile ID API, bound to that request's user and product. You never handle tokens yourself.
+Construct one client with your partner ID and API key. The SDK manages authentication for you: before each request it fetches a short-lived token from the Smile ID API. A verification job's token is bound to that job's product and, when the job names one, its user; other calls get a token with neither. You never handle tokens yourself.
 
 ```python
 import os

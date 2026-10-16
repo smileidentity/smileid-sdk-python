@@ -36,6 +36,19 @@ _RETRYABLE_STATUSES = frozenset({408, 429, 500, 502, 503, 504})
 # Upper bound on a server-provided Retry-After delay, in seconds.
 _MAX_RETRY_AFTER_SECONDS = 60.0
 
+# Mirrors the API authorizer: a token bound to a product is accepted only on
+# that product's endpoint. Paths absent here mint a token with no claims.
+_PRODUCT_BY_PATH = {
+    "/v3/enhanced_kyc": "enhanced_kyc",
+    "/v3/document_verification": "document_verification",
+    "/v3/enhanced_document_verification": "enhanced_document_verification",
+    "/v3/residency_document_verification": "residency_document_verification",
+    "/v3/biometric_kyc": "biometric_kyc",
+    "/v3/registration": "smart_selfie_registration",
+    "/v3/authentication": "smart_selfie_authentication",
+    "/v3/compare": "smart_selfie_compare",
+}
+
 
 class Transport:
     def __init__(
@@ -67,20 +80,26 @@ class Transport:
 
     # -- token -------------------------------------------------------------
 
-    def _mint_token(self, request: Request) -> str:
+    def _mint_token(
+        self, request: Request, *, timeout: Optional[float], use_enrolled_image: bool
+    ) -> str:
         """Mint a token bound to this one request's user, product and grant.
 
         Tokens are never shared between requests: a grant authorises a
         captureless job for one user, and must not reach any other call.
         """
+        product = _PRODUCT_BY_PATH.get(request.path)
+        user_id = _job_user_id(request) if product is not None else None
+        if use_enrolled_image and user_id is None:
+            raise ValidationError("user_id is required when use_enrolled_image is true")
         token_request = operations.token(
             self._config.partner_id,
             self._config.api_key,
-            user_id=request.token_user_id,
-            product=request.product,
-            use_enrolled_image=request.use_enrolled_image,
+            user_id=user_id,
+            product=product,
+            use_enrolled_image=use_enrolled_image,
         )
-        response = self._send_with_retries(token_request, timeout=None)
+        response = self._send_with_retries(token_request, timeout=timeout)
         if response.status_code != 200:
             raise parse_error(response)
         body = parse_success_json(response)
@@ -95,9 +114,23 @@ class Transport:
 
     # -- public send -------------------------------------------------------
 
-    def send(self, request: Request, *, timeout: Optional[float] = None) -> httpx.Response:
-        """Execute a request, minting its token first when it is authenticated."""
-        token = self._mint_token(request) if request.authenticated else None
+    def send(
+        self,
+        request: Request,
+        *,
+        timeout: Optional[float] = None,
+        use_enrolled_image: bool = False,
+    ) -> httpx.Response:
+        """Execute a request, minting its token first when it is authenticated.
+
+        ``use_enrolled_image`` grants the job's token a captureless Biometric
+        KYC; it is never sent in the job body.
+        """
+        token = (
+            self._mint_token(request, timeout=timeout, use_enrolled_image=use_enrolled_image)
+            if request.authenticated
+            else None
+        )
         response = self._send_with_retries(request, timeout=timeout, token=token)
         if response.status_code in request.ok_statuses:
             return response
@@ -215,6 +248,20 @@ class Transport:
 # internally today, and httpx additionally escapes filenames.
 _FILENAME_UNSAFE_RE = re.compile(r'[\r\n"\\;]')
 _MEDIA_TYPE_RE = re.compile(r"^[!#$&^_.+\-\w]+/[!#$&^_.+\-\w]+$")
+
+
+def _job_user_id(request: Request) -> Optional[str]:
+    """The user a job names, from its User-ID header or its body.
+
+    The API trims the header but not the token's ``user_id`` claim, so a
+    padded id would mint a token for a different user than the job names.
+    """
+    user_id = request.user_id_header
+    if user_id is None:
+        user_id = next((v for name, v in request.text_parts if name == "user_id"), None)
+    if user_id is not None and (not user_id or user_id != user_id.strip()):
+        raise ValidationError("user_id must not be empty or padded with whitespace")
+    return user_id
 
 
 def _sanitize_filename(filename: str) -> str:
