@@ -36,10 +36,6 @@ class Request:
     binary_parts: List[Tuple[str, str, bytes, str]] = field(default_factory=list)
     body_kind: str = "none"  # "multipart" | "none"
     ok_statuses: Tuple[int, ...] = (200, 202)
-    # Claims bound into the token minted for this one request.
-    product: Optional[str] = None
-    token_user_id: Optional[str] = None
-    use_enrolled_image: bool = False
 
 
 def _add_scalar(req: Request, name: str, value: object) -> None:
@@ -117,8 +113,6 @@ def enhanced_kyc(
         authenticated=True,
         idempotent=False,
         user_id_header=user_id,
-        token_user_id=user_id,
-        product="enhanced_kyc",
         body_kind="multipart",
     )
     _add_scalar(req, "country", country)
@@ -157,8 +151,6 @@ def document_verification(
         idempotent=False,
         needs_partner_id_header=True,
         user_id_header=user_id,
-        token_user_id=user_id,
-        product="document_verification",
         body_kind="multipart",
     )
     _add_scalar(req, "country", country)
@@ -206,7 +198,6 @@ def enhanced_document_verification(
         user_id=user_id,
     )
     req.path = "/v3/enhanced_document_verification"
-    req.product = "enhanced_document_verification"
     return req
 
 
@@ -242,7 +233,6 @@ def residency_document_verification(
         user_id=user_id,
     )
     req.path = "/v3/residency_document_verification"
-    req.product = "residency_document_verification"
     _add_binary(req, "visa", visa)
     return req
 
@@ -256,15 +246,13 @@ def biometric_kyc(
     user_details: dict,
     selfie_image: Optional[BinaryPart] = None,
     liveness_images: Optional[List[BinaryPart]] = None,
-    use_enrolled_image: bool = False,
     callback_url: Optional[str] = None,
     sandbox_result: Optional[float] = None,
     partner_params: Optional[dict] = None,
     metadata: Optional[list] = None,
     user_id: Optional[str] = None,
 ) -> Request:
-    """POST /v3/biometric_kyc. Partner-ID header required. use_enrolled_image is
-    a token claim, not a body field."""
+    """POST /v3/biometric_kyc. Partner-ID header required."""
     req = Request(
         method="POST",
         path="/v3/biometric_kyc",
@@ -272,9 +260,6 @@ def biometric_kyc(
         idempotent=False,
         needs_partner_id_header=True,
         user_id_header=user_id,
-        token_user_id=user_id,
-        product="biometric_kyc",
-        use_enrolled_image=use_enrolled_image,
         body_kind="multipart",
     )
     _add_scalar(req, "country", country)
@@ -311,8 +296,6 @@ def registration(
         authenticated=True,
         idempotent=False,
         user_id_header=user_id,
-        token_user_id=user_id,
-        product="smart_selfie_registration",
         body_kind="multipart",
     )
     _add_scalar(req, "allow_new_enroll", allow_new_enroll)
@@ -345,8 +328,6 @@ def authentication(
         path="/v3/authentication",
         authenticated=True,
         idempotent=False,
-        token_user_id=user_id,
-        product="smart_selfie_authentication",
         body_kind="multipart",
     )
     _add_scalar(req, "user_id", user_id)
@@ -382,8 +363,6 @@ def compare(
         path="/v3/compare",
         authenticated=True,
         idempotent=False,
-        token_user_id=user_id,
-        product="smart_selfie_compare",
         body_kind="multipart",
     )
     _add_scalar(req, "comparison_image_type", comparison_image_type)

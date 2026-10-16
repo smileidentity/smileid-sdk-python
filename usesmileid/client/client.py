@@ -237,6 +237,8 @@ class BiometricKycResource(_Resource):
         enrolled selfie, so the selfie and liveness images may be omitted. The
         grant is bound into this job's token, which names ``user_id``.
         """
+        if not isinstance(use_enrolled_image, bool):
+            raise ValidationError("use_enrolled_image must be a bool")
         if use_enrolled_image:
             if not user_id:
                 raise ValidationError("user_id is required when use_enrolled_image is true")
@@ -248,7 +250,6 @@ class BiometricKycResource(_Resource):
         request = operations.biometric_kyc(
             selfie_image=_selfie(selfie_image),
             liveness_images=_liveness(liveness_images),
-            use_enrolled_image=use_enrolled_image,
             consent=_consent_dict(consent),
             country=country,
             id_type=id_type,
@@ -260,7 +261,9 @@ class BiometricKycResource(_Resource):
             metadata=metadata,
             user_id=user_id,
         )
-        response = self._transport.send(request, timeout=timeout)
+        response = self._transport.send(
+            request, timeout=timeout, use_enrolled_image=use_enrolled_image
+        )
         return AcceptedResponse.model_validate(parse_success_json(response))
 
 
@@ -302,8 +305,8 @@ class BiometricResource(_Resource):
         user_id: str,
         consent: ConsentInput,
         user_details: UserDetailsInput,
-        selfie_image: Any = None,
-        liveness_images: Any = None,
+        selfie_image: Any,
+        liveness_images: Any,
         callback_url: Optional[str] = None,
         sandbox_result: Optional[float] = None,
         partner_params: Optional[dict] = None,

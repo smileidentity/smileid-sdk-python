@@ -11,6 +11,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 
 - Each request mints its own token, bound to that request's `user_id` and product, instead of reusing one cached token. A 401 is no longer retried with a refreshed token.
+- A `user_id` that is empty or padded with whitespace raises `ValidationError` before any request is sent.
+- `biometric.authenticate` takes `selfie_image` and `liveness_images` as required arguments.
 
 ### Added
 
