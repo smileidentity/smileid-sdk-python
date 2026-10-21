@@ -92,14 +92,15 @@ def test_authenticate_requires_images(
 ) -> None:
     client = make_client()
     user_details = {"given_names": "John", "last_name": "Doe", "email": "john@example.com"}
-    with pytest.raises(usesmileid.errors.ValidationError):
-        client.biometric.authenticate(
+    with pytest.raises(TypeError):
+        client.biometric.authenticate(  # type: ignore[call-arg]
             user_id="user-1", consent=consent_dict(), user_details=user_details
         )
     with pytest.raises(usesmileid.errors.ValidationError):
         client.biometric.authenticate(
             user_id="user-1",
-            selfie_image=JPEG_BYTES,  # liveness missing
+            selfie_image=JPEG_BYTES,
+            liveness_images=None,
             consent=consent_dict(),
             user_details=user_details,
         )
