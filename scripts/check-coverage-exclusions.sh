@@ -24,12 +24,27 @@ git diff --unified=0 --no-color --no-ext-diff "$base...HEAD" | awk -v self="$sel
   BEGIN {
     inline = "(no" "cov|pragma: no (cover|branch)|c8 " "ignore|istanbul " "ignore|@codeCoverage" "Ignore|#\\[coverage\\(off\\)\\])"
   }
-  /^\+\+\+ / {
+  # File headers. Inside a hunk, "--- x" is a removed "-- x" line and
+  # "+++ x" an added "++ x" line, so only treat them as headers between a
+  # "diff --git" line and the first hunk.
+  /^diff --git / {
+    in_hunk = 0
+    after_minus = 0
+    next
+  }
+  !in_hunk && /^--- / {
+    after_minus = 1
+    next
+  }
+  !in_hunk && after_minus && /^\+\+\+ / {
     file = $0
     sub(/^\+\+\+ (b\/)?/, "", file)
+    after_minus = 0
     next
   }
   /^@@ / {
+    in_hunk = 1
+    after_minus = 0
     # @@ -a,b +c,d @@: c is the first new line number.
     spec = $3
     sub(/^\+/, "", spec)
@@ -37,7 +52,7 @@ git diff --unified=0 --no-color --no-ext-diff "$base...HEAD" | awk -v self="$sel
     line = parts[1] + 0
     next
   }
-  /^\+/ {
+  in_hunk && /^\+/ {
     text = substr($0, 2)
     reason = ""
     if (file == self || file == "/dev/null") {

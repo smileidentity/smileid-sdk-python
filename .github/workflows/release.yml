@@ -57,35 +57,9 @@ jobs:
       - name: Check major version matches breaking changes
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          # A PR labelled `breaking` since the previous release needs a major
-          # bump, and a major bump needs at least one such PR as its reason.
-          set -euo pipefail
-          PREV_TAG=$(git tag --merged HEAD --list 'v*' --sort=-v:refname \
-            | grep -vxF "$GITHUB_REF_NAME" | head -n 1 || true)
-          if [ -z "$PREV_TAG" ]; then
-            echo "::notice::No previous v* tag, so there is nothing to compare against."
-            exit 0
-          fi
-          PREV_DATE=$(git log -1 --format=%cI "$PREV_TAG")
-          PREV_MAJOR=$(echo "${PREV_TAG#v}" | cut -d. -f1)
-          NEW_MAJOR=$(echo "${GITHUB_REF_NAME#v}" | cut -d. -f1)
-          BREAKING=$(gh pr list --repo "$GITHUB_REPOSITORY" --state merged --base main \
-            --label breaking --search "merged:>=$PREV_DATE" --limit 200 \
-            --json number,title --jq '.[] | "#\(.number) \(.title)"')
-          echo "Previous release: $PREV_TAG ($PREV_DATE)"
-          if [ -n "$BREAKING" ]; then
-            echo "PRs labelled 'breaking' since $PREV_TAG:"
-            echo "$BREAKING"
-          fi
-          if [ -n "$BREAKING" ] && [ "$NEW_MAJOR" -le "$PREV_MAJOR" ]; then
-            echo "::error::PRs labelled 'breaking' merged since $PREV_TAG, but $GITHUB_REF_NAME does not increase the major version."
-            exit 1
-          fi
-          if [ -z "$BREAKING" ] && [ "$NEW_MAJOR" -gt "$PREV_MAJOR" ]; then
-            echo "::error::$GITHUB_REF_NAME increases the major version, but no PR labelled 'breaking' merged since $PREV_TAG."
-            exit 1
-          fi
+        # Counts the PRs labelled `breaking` among the commits since the
+        # previous stable tag, and ties the major version to them.
+        run: scripts/check-release-breaking.sh "$GITHUB_REF_NAME"
 
       - name: Install package
         run: pip install -e ".[dev]"

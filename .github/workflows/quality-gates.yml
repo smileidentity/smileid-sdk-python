@@ -1,6 +1,6 @@
 # Quality gates for every pull request: public API breaks against the last
 # release, coverage of the generated layer and of changed lines, and the
-# release scripts' own tests.
+# scripts' own tests.
 #
 # A bot PR is one labelled `spec-sync`, `parity-port` or `release`, or opened
 # by an account whose login ends in `[bot]`. The changed-lines coverage and
@@ -45,55 +45,7 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
           HAS_BREAKING_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'breaking') }}
-        run: |
-          set -euo pipefail
-          tag=$(git tag --merged "origin/$BASE_REF" --list 'v*' --sort=-v:refname | head -n 1)
-          if [ -z "$tag" ]; then
-            echo "::notice::No v* release tag yet, so there is no released API to compare against."
-            exit 0
-          fi
-          echo "Comparing the public API with $tag"
-
-          # griffe exits 1 when it finds breaks. Print them as
-          # "file: object: change", without the line number, so the two
-          # lists compare even when the PR moves code around.
-          breaks() {
-            local out rc=0
-            out=$(griffe check usesmileid --search . --against "$tag" --no-color "$@" 2>&1) || rc=$?
-            if [ "$rc" -ne 0 ] && ! printf '%s\n' "$out" | grep -qE '^[^ ]+:[0-9]+: '; then
-              printf '%s\n' "$out" >&2
-              echo "::error::griffe failed to load the package"
-              exit 1
-            fi
-            printf '%s\n' "$out" | grep -E '^[^ ]+:[0-9]+: ' | sed -E 's/^([^ ]+):[0-9]+: /\1: /' | sort -u
-          }
-          breaks > head-breaks.txt
-          # Breaks already on the base branch were judged when they merged.
-          # Only breaks this PR adds need the `breaking` label.
-          breaks --base-ref "origin/$BASE_REF" > base-breaks.txt
-          comm -12 base-breaks.txt head-breaks.txt > existing-breaks.txt
-          comm -13 base-breaks.txt head-breaks.txt > new-breaks.txt
-
-          if [ -s existing-breaks.txt ]; then
-            echo "::warning::$BASE_REF already breaks the public API of $tag. The next release needs a major version."
-            sed 's/^/  /' existing-breaks.txt
-          fi
-          if [ ! -s new-breaks.txt ]; then
-            echo "This PR does not break the public API of $tag."
-            exit 0
-          fi
-          echo "This PR breaks the public API of $tag:"
-          while IFS= read -r line; do
-            if [ "$HAS_BREAKING_LABEL" = "true" ]; then
-              echo "::warning::$line"
-            else
-              echo "::error::$line"
-            fi
-          done < new-breaks.txt
-          if [ "$HAS_BREAKING_LABEL" != "true" ]; then
-            echo "Add the 'breaking' label if this break is intended. The release then needs a major version."
-            exit 1
-          fi
+        run: scripts/check-api-compat.sh "origin/$BASE_REF"
 
   coverage:
     runs-on: ubuntu-latest
@@ -149,5 +101,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Shellcheck
+        run: shellcheck scripts/*.sh
       - name: Test bump-version.sh
         run: scripts/test-bump-version.sh
+      - name: Test release and coverage scripts
+        run: scripts/test-release-scripts.sh
