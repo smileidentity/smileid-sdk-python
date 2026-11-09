@@ -21,6 +21,7 @@ env/
 .tox/
 .coverage
 .coverage.*
+coverage.xml
 htmlcov/
 
 # Environment files

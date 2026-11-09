@@ -26,8 +26,13 @@ jobs:
     permissions:
       contents: write
       id-token: write
+      # Lists merged PRs for the breaking-change rule below.
+      pull-requests: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history and tags, to find the previous release.
+          fetch-depth: 0
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
@@ -46,6 +51,39 @@ jobs:
           TAG_VERSION="${GITHUB_REF_NAME#v}"
           if ! grep -qE "^## \[${TAG_VERSION}\]" CHANGELOG.md; then
             echo "::error::CHANGELOG.md has no '## [$TAG_VERSION]' heading for tag $GITHUB_REF_NAME"
+            exit 1
+          fi
+
+      - name: Check major version matches breaking changes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # A PR labelled `breaking` since the previous release needs a major
+          # bump, and a major bump needs at least one such PR as its reason.
+          set -euo pipefail
+          PREV_TAG=$(git tag --merged HEAD --list 'v*' --sort=-v:refname \
+            | grep -vxF "$GITHUB_REF_NAME" | head -n 1 || true)
+          if [ -z "$PREV_TAG" ]; then
+            echo "::notice::No previous v* tag, so there is nothing to compare against."
+            exit 0
+          fi
+          PREV_DATE=$(git log -1 --format=%cI "$PREV_TAG")
+          PREV_MAJOR=$(echo "${PREV_TAG#v}" | cut -d. -f1)
+          NEW_MAJOR=$(echo "${GITHUB_REF_NAME#v}" | cut -d. -f1)
+          BREAKING=$(gh pr list --repo "$GITHUB_REPOSITORY" --state merged --base main \
+            --label breaking --search "merged:>=$PREV_DATE" --limit 200 \
+            --json number,title --jq '.[] | "#\(.number) \(.title)"')
+          echo "Previous release: $PREV_TAG ($PREV_DATE)"
+          if [ -n "$BREAKING" ]; then
+            echo "PRs labelled 'breaking' since $PREV_TAG:"
+            echo "$BREAKING"
+          fi
+          if [ -n "$BREAKING" ] && [ "$NEW_MAJOR" -le "$PREV_MAJOR" ]; then
+            echo "::error::PRs labelled 'breaking' merged since $PREV_TAG, but $GITHUB_REF_NAME does not increase the major version."
+            exit 1
+          fi
+          if [ -z "$BREAKING" ] && [ "$NEW_MAJOR" -gt "$PREV_MAJOR" ]; then
+            echo "::error::$GITHUB_REF_NAME increases the major version, but no PR labelled 'breaking' merged since $PREV_TAG."
             exit 1
           fi
 
