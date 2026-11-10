@@ -1,12 +1,12 @@
 # usesmileid
 
-![PyPI version](https://img.shields.io/badge/pypi-unpublished-lightgrey)
+[![PyPI version](https://img.shields.io/pypi/v/usesmileid)](https://pypi.org/project/usesmileid/)
 ![CI status](https://img.shields.io/badge/ci-pending-lightgrey)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 Official Smile ID server-side SDK for Python — V3 APIs.
 
-This project is under active development. It is not yet published to PyPI, and the API is not stable. Do not use it in production yet.
+This project is under active development. It is published to PyPI as [`usesmileid`](https://pypi.org/project/usesmileid/), but the API may still change between major versions.
 
 The package and the importable module are both named `usesmileid`. Python 3.8 or later is required.
 
