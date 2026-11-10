@@ -8,6 +8,11 @@
 # increase. If the major version increases, at least one such PR must exist,
 # except for the move from 0.x to 1.0.0, which stabilises the API.
 #
+# The same rule applies to pre-release tags such as v14.0.0rc1: the previous
+# stable tag is the comparison point, so a pre-release of a major version
+# needs a merged `breaking` PR, and one of a minor or patch version must not
+# ship one.
+#
 # Needs GITHUB_REPOSITORY and a token for `gh`. For tests, set
 # BREAKING_PRS_FILE to a file of "<merge commit sha><TAB>#<n> <title>" lines
 # to use instead of asking GitHub.

@@ -90,7 +90,8 @@ expect_release v1.0.1 pass # backport only sees its own commits
 printf 'line one\n-- removed later\n' >notes.txt
 git add notes.txt && commit notes >/dev/null
 base=$(git rev-parse HEAD)
-printf 'line one\n++ not-a-file.py\nx = 1  # pragma: no cover\n' >notes.txt
+# Built at run time so this script doesn't itself contain an exclusion marker.
+printf 'line one\n++ not-a-file.py\nx = 1  # pragma: no %s\n' cover >notes.txt
 git add notes.txt && commit marker >/dev/null
 out=$(scripts/check-coverage-exclusions.sh "$base" 2>&1) && fail "exclusions: expected failure"
 case "$out" in

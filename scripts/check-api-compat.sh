@@ -25,7 +25,9 @@ fi
 echo "Comparing the public API with $tag"
 
 # Prints breaks as "file: object: change", without the line number, so the
-# two lists compare even when code moves. griffe exits 1 when it finds breaks,
+# two lists compare even when code moves. A change to the value of
+# `__version__` is a release, not a break, so it is dropped, as the other SDKs
+# ignore their version constants. griffe exits 1 when it finds breaks,
 # and with no breaks the filter matches nothing, so neither is an error here.
 breaks() {
   local out rc=0
@@ -38,7 +40,8 @@ breaks() {
     exit 1
   fi
   [ -n "$found" ] || return 0
-  printf '%s\n' "$found" | sed -E 's/^([^ ]+):[0-9]+: /\1: /' | sort -u
+  printf '%s\n' "$found" | sed -E 's/^([^ ]+):[0-9]+: /\1: /' \
+    | { grep -vE '^[^ ]+: __version__: Attribute value was changed' || true; } | sort -u
 }
 
 work="$(mktemp -d)"
