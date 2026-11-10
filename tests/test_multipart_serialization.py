@@ -7,6 +7,7 @@ from typing import Any
 
 import httpx
 
+import usesmileid
 from tests.conftest import (
     BASE_URL,
     JPEG_BYTES,
@@ -65,8 +66,8 @@ def test_enhanced_kyc_multipart_shape(respx_mock: Any, mock_token: Any) -> None:
 
     # Telemetry headers always present.
     assert request.headers["SmileID-Source-SDK"] == "python"
-    assert request.headers["SmileID-Source-SDK-Version"] == "12.2.0"
-    assert request.headers["User-Agent"].startswith("smileid-sdk-python/12.2.0")
+    assert request.headers["SmileID-Source-SDK-Version"] == usesmileid.__version__
+    assert request.headers["User-Agent"].startswith(f"smileid-sdk-python/{usesmileid.__version__}")
 
 
 def test_document_verification_repeated_liveness_and_partner_id(

@@ -6,7 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-## [12.2.0] - 2026-10-08
+## [13.0.0] - 2026-11-09
+
+This is a major version because it changes the public API of 12.1.0. Version 12.2.0 was never published; its changes ship here.
+
+### Breaking changes
+
+- `biometric.authenticate` no longer takes `use_enrolled_image` and requires `selfie_image` and `liveness_images`. Pass both images, or use `biometric_kyc.verify(use_enrolled_image=True, user_id=...)` to check against an enrolled selfie.
+- A `user_id` that is empty or padded with whitespace raises `ValidationError`. Strip user IDs before you pass them.
+- The `usesmileid.client.auth` module and `Transport.token_manager` are removed, because each request now mints its own token. Remove any code that reads or refreshes the cached token.
+- The request builders in `usesmileid.generated.operations` changed to match: `authentication` requires both images, and `biometric_kyc` no longer takes `use_enrolled_image`. Call the client methods instead of the builders.
 
 ### Changed
 
@@ -50,7 +59,7 @@ First public release of the Smile ID Python server SDK.
   error the API returns.
 - Automatic token management and retries for idempotent operations.
 
-[Unreleased]: https://github.com/smileidentity/smileid-sdk-python/compare/v12.2.0...HEAD
-[12.2.0]: https://github.com/smileidentity/smileid-sdk-python/compare/v12.1.0...v12.2.0
+[Unreleased]: https://github.com/smileidentity/smileid-sdk-python/compare/v13.0.0...HEAD
+[13.0.0]: https://github.com/smileidentity/smileid-sdk-python/compare/v12.1.0...v13.0.0
 [12.1.0]: https://github.com/smileidentity/smileid-sdk-python/compare/v12.0.0...v12.1.0
 [12.0.0]: https://github.com/smileidentity/smileid-sdk-python/releases/tag/v12.0.0
