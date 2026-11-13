@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- AML screening: `aml.screen` (`POST /v3/aml`) and `aml.screen_sync` (`POST /v3/aml/sync`), which returns a `OneTimeAmlResult` and accepts an `idempotency_key`.
+- AML Monitoring: `aml.monitor` (`POST /v3/aml/monitoring`) and `aml.monitoring_news` (`GET /v3/aml/monitoring/{job_id}/news/{reference}`).
+- The `OneTimeAmlResult` and `AmlMonitoringNewsResponse` response models.
+
 ## [13.0.0] - 2026-11-09
 
 This is a major version because it changes the public API of 12.1.0. Version 12.2.0 was never published; its changes ship here.
