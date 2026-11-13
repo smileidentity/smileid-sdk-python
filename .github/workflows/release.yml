@@ -26,8 +26,13 @@ jobs:
     permissions:
       contents: write
       id-token: write
+      # Lists merged PRs for the breaking-change rule below.
+      pull-requests: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history and tags, to find the previous release.
+          fetch-depth: 0
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
@@ -48,6 +53,13 @@ jobs:
             echo "::error::CHANGELOG.md has no '## [$TAG_VERSION]' heading for tag $GITHUB_REF_NAME"
             exit 1
           fi
+
+      - name: Check major version matches breaking changes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # Counts the PRs labelled `breaking` among the commits since the
+        # previous stable tag, and ties the major version to them.
+        run: scripts/check-release-breaking.sh "$GITHUB_REF_NAME"
 
       - name: Install package
         run: pip install -e ".[dev]"

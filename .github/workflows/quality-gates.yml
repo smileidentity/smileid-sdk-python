@@ -1,0 +1,111 @@
+# Quality gates for every pull request: public API breaks against the last
+# release, coverage of the generated layer and of changed lines, and the
+# scripts' own tests.
+#
+# A bot PR is one labelled `spec-sync`, `parity-port` or `release`, or opened
+# by an account whose login ends in `[bot]`. The changed-lines coverage and
+# exclusion checks only fail bot PRs; on other PRs they report without failing.
+
+name: Quality Gates
+
+on:
+  pull_request:
+    # `labeled` and `unlabeled` re-run the gates when `breaking` or a bot
+    # label is added or removed.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-gates-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  IS_BOT_PR: >-
+    ${{ contains(github.event.pull_request.labels.*.name, 'spec-sync')
+    || contains(github.event.pull_request.labels.*.name, 'parity-port')
+    || contains(github.event.pull_request.labels.*.name, 'release')
+    || endsWith(github.event.pull_request.user.login, '[bot]') }}
+
+jobs:
+  api-compat:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Install griffe
+        run: pip install "griffe==2.3.0"
+      - name: Compare public API with the latest release
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HAS_BREAKING_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'breaking') }}
+        run: scripts/check-api-compat.sh "origin/$BASE_REF"
+      - name: Test that a release bump is not a break
+        run: scripts/test-api-compat.sh
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Install package
+        run: pip install -e ".[dev]" "diff-cover==11.0.1"
+      - name: Test with coverage
+        run: pytest --cov=usesmileid --cov-branch --cov-report=xml --cov-report=term-missing
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage
+          path: coverage.xml
+          if-no-files-found: error
+      - name: Require 100% line and branch coverage of generated/
+        run: coverage report --include='usesmileid/generated/*' --show-missing --fail-under=100
+      - name: Coverage of changed lines
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if diff-cover coverage.xml --compare-branch="origin/$BASE_REF" --fail-under=100; then
+            exit 0
+          fi
+          if [ "$IS_BOT_PR" = "true" ]; then
+            echo "::error::Bot PRs must cover every changed line."
+            exit 1
+          fi
+          echo "::warning::Some changed lines are not covered. This only fails bot PRs."
+      - name: Block new coverage exclusions
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if scripts/check-coverage-exclusions.sh "origin/$BASE_REF"; then
+            exit 0
+          fi
+          if [ "$IS_BOT_PR" = "true" ]; then
+            echo "::error::Bot PRs must not add coverage exclusions."
+            exit 1
+          fi
+          echo "::warning::This PR adds coverage exclusions. This only fails bot PRs."
+
+  scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Shellcheck
+        run: shellcheck scripts/*.sh
+      - name: Test bump-version.sh
+        run: scripts/test-bump-version.sh
+      - name: Test release and coverage scripts
+        run: scripts/test-release-scripts.sh
