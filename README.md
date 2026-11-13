@@ -238,6 +238,54 @@ accepted = smile.biometric.compare(
 )
 ```
 
+### AML screening
+
+Screen a name against sanctions, PEP and adverse-media lists. `countries` and `aliases` are sent as JSON arrays, as the API requires.
+
+```python
+# Result arrives on the callback URL.
+accepted = smile.aml.screen(
+    countries=["NG", "KE"],
+    full_name="John Doe",
+    user_details=user_details,
+    consent=consent,
+)
+
+# Result is returned in the response; no callback is sent.
+result = smile.aml.screen_sync(
+    countries=["NG", "KE"],
+    full_name="John Doe",
+    user_details=user_details,
+    consent=consent,
+    idempotency_key="onboarding-8f14e45fceea167a",  # optional, makes a retry safe
+)
+print(result.status)  # "clear", "block", "attention" or "error"
+```
+
+`screen_sync` retries a failed request only when you pass an `idempotency_key`. Without a key a retry would start a second, billed screening.
+
+### AML monitoring
+
+Enrol a person for ongoing monitoring, then read the adverse-media articles behind a match.
+
+```python
+accepted = smile.aml.monitor(
+    countries=["NG", "GH"],
+    full_name="Jane Doe",
+    user_details=user_details,
+    consent=consent,
+)
+
+news = smile.aml.monitoring_news(
+    "a1b2c3d4e5",  # job_id
+    "ref_001",     # person reference from the monitoring result
+    news_category="financial_crime",
+    page=1,
+    limit=25,
+)
+print(news.meta.total_count, [item.title for item in news.news])
+```
+
 ### Check a verification's status
 
 ```python

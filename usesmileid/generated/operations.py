@@ -483,3 +483,178 @@ def id_status(country: str, id_type: str) -> Request:
         idempotent=True,
         query={"country": country, "id_type": id_type},
     )
+
+
+def _aml_request(
+    path: str,
+    *,
+    countries: List[str],
+    user_details: dict,
+    consent: dict,
+    full_name: Optional[str],
+    birth_year: Optional[str],
+    strict_match: Optional[bool],
+    aliases: Optional[List[str]],
+    search_existing_user: Optional[bool],
+    user_id: Optional[str],
+    callback_url: Optional[str],
+    partner_params: Optional[dict],
+    metadata: Optional[list],
+    extra_headers: Optional[Dict[str, str]] = None,
+    idempotent: bool = False,
+    ok_statuses: Tuple[int, ...] = (200, 202),
+) -> Request:
+    req = Request(
+        method="POST",
+        path=path,
+        authenticated=True,
+        idempotent=idempotent,
+        extra_headers=extra_headers or {},
+        body_kind="multipart",
+        ok_statuses=ok_statuses,
+    )
+    _add_scalar(req, "full_name", full_name)
+    _add_scalar(req, "birth_year", birth_year)
+    _add_scalar(req, "strict_match", strict_match)
+    _add_scalar(req, "search_existing_user", search_existing_user)
+    _add_scalar(req, "user_id", user_id)
+    _add_scalar(req, "callback_url", callback_url)
+    _add_json(req, "countries", countries)
+    _add_json(req, "aliases", aliases)
+    _add_json(req, "user_details", user_details)
+    _add_json(req, "consent", consent)
+    _add_json(req, "partner_params", partner_params)
+    _add_json(req, "metadata", metadata)
+    return req
+
+
+def one_time_aml(
+    *,
+    countries: List[str],
+    full_name: str,
+    user_details: dict,
+    consent: dict,
+    birth_year: Optional[str] = None,
+    strict_match: Optional[bool] = None,
+    aliases: Optional[List[str]] = None,
+    search_existing_user: Optional[bool] = None,
+    user_id: Optional[str] = None,
+    callback_url: Optional[str] = None,
+    partner_params: Optional[dict] = None,
+    metadata: Optional[list] = None,
+) -> Request:
+    """POST /v3/aml. countries and aliases are JSON-encoded parts; user_id in BODY."""
+    return _aml_request(
+        "/v3/aml",
+        countries=countries,
+        full_name=full_name,
+        user_details=user_details,
+        consent=consent,
+        birth_year=birth_year,
+        strict_match=strict_match,
+        aliases=aliases,
+        search_existing_user=search_existing_user,
+        user_id=user_id,
+        callback_url=callback_url,
+        partner_params=partner_params,
+        metadata=metadata,
+    )
+
+
+def one_time_aml_sync(
+    *,
+    countries: List[str],
+    full_name: str,
+    user_details: dict,
+    consent: dict,
+    birth_year: Optional[str] = None,
+    strict_match: Optional[bool] = None,
+    aliases: Optional[List[str]] = None,
+    search_existing_user: Optional[bool] = None,
+    user_id: Optional[str] = None,
+    callback_url: Optional[str] = None,
+    partner_params: Optional[dict] = None,
+    metadata: Optional[list] = None,
+    idempotency_key: Optional[str] = None,
+) -> Request:
+    """POST /v3/aml/sync. 200 carries the result. A key makes a retry safe."""
+    return _aml_request(
+        "/v3/aml/sync",
+        countries=countries,
+        full_name=full_name,
+        user_details=user_details,
+        consent=consent,
+        birth_year=birth_year,
+        strict_match=strict_match,
+        aliases=aliases,
+        search_existing_user=search_existing_user,
+        user_id=user_id,
+        callback_url=callback_url,
+        partner_params=partner_params,
+        metadata=metadata,
+        extra_headers=(
+            {"SmileID-Idempotency-Key": idempotency_key} if idempotency_key else {}
+        ),
+        idempotent=bool(idempotency_key),
+        ok_statuses=(200,),
+    )
+
+
+def aml_monitoring(
+    *,
+    countries: List[str],
+    user_details: dict,
+    consent: dict,
+    full_name: Optional[str] = None,
+    birth_year: Optional[str] = None,
+    strict_match: Optional[bool] = None,
+    aliases: Optional[List[str]] = None,
+    search_existing_user: Optional[bool] = None,
+    user_id: Optional[str] = None,
+    callback_url: Optional[str] = None,
+    partner_params: Optional[dict] = None,
+    metadata: Optional[list] = None,
+) -> Request:
+    """POST /v3/aml/monitoring. full_name optional when search_existing_user."""
+    return _aml_request(
+        "/v3/aml/monitoring",
+        countries=countries,
+        full_name=full_name,
+        user_details=user_details,
+        consent=consent,
+        birth_year=birth_year,
+        strict_match=strict_match,
+        aliases=aliases,
+        search_existing_user=search_existing_user,
+        user_id=user_id,
+        callback_url=callback_url,
+        partner_params=partner_params,
+        metadata=metadata,
+    )
+
+
+def aml_monitoring_news(
+    job_id: str,
+    reference: str,
+    *,
+    news_category: str,
+    page: Optional[int] = None,
+    limit: Optional[int] = None,
+) -> Request:
+    """GET /v3/aml/monitoring/{job_id}/news/{reference}."""
+    query = {"news_category": news_category}
+    if page is not None:
+        query["page"] = str(page)
+    if limit is not None:
+        query["limit"] = str(limit)
+    return Request(
+        method="GET",
+        path=(
+            f"/v3/aml/monitoring/{quote(job_id, safe='')}"
+            f"/news/{quote(reference, safe='')}"
+        ),
+        authenticated=True,
+        idempotent=True,
+        query=query,
+        ok_statuses=(200,),
+    )

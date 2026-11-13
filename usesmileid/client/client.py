@@ -18,9 +18,11 @@ from usesmileid.errors import ValidationError, parse_success_json
 from usesmileid.generated import operations
 from usesmileid.generated.models import (
     AcceptedResponse,
+    AmlMonitoringNewsResponse,
     BankCodesResponse,
     IdStatusResponse,
     JobStatus,
+    OneTimeAmlResult,
     ReplayCallbackResponse,
     ReportUserFraudResponse,
     SupportedDocumentsResponse,
@@ -366,6 +368,138 @@ class BiometricResource(_Resource):
         return AcceptedResponse.model_validate(parse_success_json(response))
 
 
+class AmlResource(_Resource):
+    """One-Time AML screening and AML Monitoring."""
+
+    def screen(
+        self,
+        *,
+        countries: List[str],
+        full_name: str,
+        user_details: UserDetailsInput,
+        consent: ConsentInput,
+        birth_year: Optional[str] = None,
+        strict_match: Optional[bool] = None,
+        aliases: Optional[List[str]] = None,
+        search_existing_user: Optional[bool] = None,
+        user_id: Optional[str] = None,
+        callback_url: Optional[str] = None,
+        partner_params: Optional[dict] = None,
+        metadata: Optional[list] = None,
+        timeout: Optional[float] = None,
+    ) -> AcceptedResponse:
+        """POST /v3/aml. The result arrives on the callback URL."""
+        request = operations.one_time_aml(
+            countries=countries,
+            full_name=full_name,
+            user_details=normalize_user_details(user_details),
+            consent=_consent_dict(consent),
+            birth_year=birth_year,
+            strict_match=strict_match,
+            aliases=aliases,
+            search_existing_user=search_existing_user,
+            user_id=user_id,
+            callback_url=self._callback(callback_url),
+            partner_params=partner_params,
+            metadata=metadata,
+        )
+        response = self._transport.send(request, timeout=timeout)
+        return AcceptedResponse.model_validate(parse_success_json(response))
+
+    def screen_sync(
+        self,
+        *,
+        countries: List[str],
+        full_name: str,
+        user_details: UserDetailsInput,
+        consent: ConsentInput,
+        birth_year: Optional[str] = None,
+        strict_match: Optional[bool] = None,
+        aliases: Optional[List[str]] = None,
+        search_existing_user: Optional[bool] = None,
+        user_id: Optional[str] = None,
+        callback_url: Optional[str] = None,
+        partner_params: Optional[dict] = None,
+        metadata: Optional[list] = None,
+        idempotency_key: Optional[str] = None,
+        timeout: Optional[float] = None,
+    ) -> OneTimeAmlResult:
+        """POST /v3/aml/sync. Returns the result inline; no callback is sent.
+
+        Pass ``idempotency_key`` to make a retry safe: a repeated key returns
+        the original result instead of running a second, billed screening.
+        """
+        request = operations.one_time_aml_sync(
+            countries=countries,
+            full_name=full_name,
+            user_details=normalize_user_details(user_details),
+            consent=_consent_dict(consent),
+            birth_year=birth_year,
+            strict_match=strict_match,
+            aliases=aliases,
+            search_existing_user=search_existing_user,
+            user_id=user_id,
+            callback_url=self._callback(callback_url),
+            partner_params=partner_params,
+            metadata=metadata,
+            idempotency_key=idempotency_key,
+        )
+        response = self._transport.send(request, timeout=timeout)
+        return OneTimeAmlResult.model_validate(parse_success_json(response))
+
+    def monitor(
+        self,
+        *,
+        countries: List[str],
+        user_details: UserDetailsInput,
+        consent: ConsentInput,
+        full_name: Optional[str] = None,
+        birth_year: Optional[str] = None,
+        strict_match: Optional[bool] = None,
+        aliases: Optional[List[str]] = None,
+        search_existing_user: Optional[bool] = None,
+        user_id: Optional[str] = None,
+        callback_url: Optional[str] = None,
+        partner_params: Optional[dict] = None,
+        metadata: Optional[list] = None,
+        timeout: Optional[float] = None,
+    ) -> AcceptedResponse:
+        """POST /v3/aml/monitoring. Enrols the entity for ongoing monitoring."""
+        request = operations.aml_monitoring(
+            countries=countries,
+            user_details=normalize_user_details(user_details),
+            consent=_consent_dict(consent),
+            full_name=full_name,
+            birth_year=birth_year,
+            strict_match=strict_match,
+            aliases=aliases,
+            search_existing_user=search_existing_user,
+            user_id=user_id,
+            callback_url=self._callback(callback_url),
+            partner_params=partner_params,
+            metadata=metadata,
+        )
+        response = self._transport.send(request, timeout=timeout)
+        return AcceptedResponse.model_validate(parse_success_json(response))
+
+    def monitoring_news(
+        self,
+        job_id: str,
+        reference: str,
+        *,
+        news_category: str,
+        page: Optional[int] = None,
+        limit: Optional[int] = None,
+        timeout: Optional[float] = None,
+    ) -> AmlMonitoringNewsResponse:
+        """GET /v3/aml/monitoring/{job_id}/news/{reference}."""
+        request = operations.aml_monitoring_news(
+            job_id, reference, news_category=news_category, page=page, limit=limit
+        )
+        response = self._transport.send(request, timeout=timeout)
+        return AmlMonitoringNewsResponse.model_validate(parse_success_json(response))
+
+
 class VerificationsResource(_Resource):
     def retrieve(self, job_id: str, *, timeout: Optional[float] = None) -> JobStatus:
         """GET /v3/status/{jobId}. 404 returns a not_found JobStatus."""
@@ -557,6 +691,7 @@ class Client:
         self.documents = DocumentsResource(self)
         self.biometric_kyc = BiometricKycResource(self)
         self.biometric = BiometricResource(self)
+        self.aml = AmlResource(self)
         self.verifications = VerificationsResource(self)
         self.users = UsersResource(self)
         self.services = ServicesResource(self)
@@ -589,6 +724,7 @@ class Client:
 # The resource classes are listed so the API compatibility check covers the
 # methods users call through Client, such as client.enhanced_kyc.verify.
 __all__: List[str] = [
+    "AmlResource",
     "BiometricKycResource",
     "BiometricResource",
     "Client",

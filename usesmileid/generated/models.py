@@ -6,7 +6,7 @@ deserialization.
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -137,3 +137,59 @@ class IdStatusResponse(_WireModel):
     last_hour_success_rate: Optional[str] = None
     last_known_status: Optional[str] = None
     last_check_success_rate: Optional[str] = None
+
+
+class AmlUserProvidedInfo(_WireModel):
+    given_names: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+    phone_number: Optional[str] = None
+
+
+class OneTimeAmlResult(_WireModel):
+    """One-Time AML result: the 200 body of POST /v3/aml/sync and the async callback.
+
+    ``status`` is the decision: ``clear``, ``block``, ``attention`` or ``error``.
+    Each entry of ``people`` is kept as the raw match record.
+    """
+
+    status: str
+    message: str
+    reason: Optional[str] = None
+    created_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    product: Optional[str] = None
+    partner_params: Optional[Dict[str, str]] = None
+    kyc_receipt: Optional[str] = None
+    strict_match: Optional[bool] = None
+    no_of_persons_found: Optional[int] = None
+    people: List[Dict[str, Any]] = []
+    user_provided_info: Optional[AmlUserProvidedInfo] = None
+    consent: Optional[Dict[str, Any]] = None
+    antifraud: Optional[Dict[str, Any]] = None
+    device_signals: Optional[Dict[str, Any]] = None
+
+
+class AmlMonitoringNewsItem(_WireModel):
+    body: str
+    published_date: str
+    publisher: str
+    publisher_country_code: str
+    title: str
+    url: str
+
+
+class AmlMonitoringNewsMeta(_WireModel):
+    current_page: int
+    limit: int
+    total_count: int
+
+
+class AmlMonitoringNewsResponse(_WireModel):
+    """GET /v3/aml/monitoring/{job_id}/news/{reference} response."""
+
+    job_id: str
+    product: str
+    user_id: str
+    meta: AmlMonitoringNewsMeta
+    news: List[AmlMonitoringNewsItem] = []
