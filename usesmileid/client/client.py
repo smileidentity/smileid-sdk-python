@@ -586,4 +586,15 @@ class Client:
         self.close()
 
 
-__all__: List[str] = ["Client"]
+# The resource classes are listed so the API compatibility check covers the
+# methods users call through Client, such as client.enhanced_kyc.verify.
+__all__: List[str] = [
+    "BiometricKycResource",
+    "BiometricResource",
+    "Client",
+    "DocumentsResource",
+    "EnhancedKycResource",
+    "ServicesResource",
+    "UsersResource",
+    "VerificationsResource",
+]
