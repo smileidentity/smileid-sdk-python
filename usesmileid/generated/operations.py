@@ -36,6 +36,8 @@ class Request:
     binary_parts: List[Tuple[str, str, bytes, str]] = field(default_factory=list)
     body_kind: str = "none"  # "multipart" | "none"
     ok_statuses: Tuple[int, ...] = (200, 202)
+    # The spec's x-smile-token-product: the `product` claim the token needs.
+    token_product: Optional[str] = None
 
 
 def _add_scalar(req: Request, name: str, value: object) -> None:
@@ -110,6 +112,7 @@ def enhanced_kyc(
     req = Request(
         method="POST",
         path="/v3/enhanced_kyc",
+        token_product="enhanced_kyc",
         authenticated=True,
         idempotent=False,
         user_id_header=user_id,
@@ -147,6 +150,7 @@ def document_verification(
     req = Request(
         method="POST",
         path="/v3/document_verification",
+        token_product="document_verification",
         authenticated=True,
         idempotent=False,
         needs_partner_id_header=True,
@@ -198,6 +202,7 @@ def enhanced_document_verification(
         user_id=user_id,
     )
     req.path = "/v3/enhanced_document_verification"
+    req.token_product = "enhanced_document_verification"
     return req
 
 
@@ -233,6 +238,7 @@ def residency_document_verification(
         user_id=user_id,
     )
     req.path = "/v3/residency_document_verification"
+    req.token_product = "residency_document_verification"
     _add_binary(req, "visa", visa)
     return req
 
@@ -256,6 +262,7 @@ def biometric_kyc(
     req = Request(
         method="POST",
         path="/v3/biometric_kyc",
+        token_product="biometric_kyc",
         authenticated=True,
         idempotent=False,
         needs_partner_id_header=True,
@@ -293,6 +300,7 @@ def registration(
     req = Request(
         method="POST",
         path="/v3/registration",
+        token_product="smart_selfie_registration",
         authenticated=True,
         idempotent=False,
         user_id_header=user_id,
@@ -326,6 +334,7 @@ def authentication(
     req = Request(
         method="POST",
         path="/v3/authentication",
+        token_product="smart_selfie_authentication",
         authenticated=True,
         idempotent=False,
         body_kind="multipart",
@@ -361,6 +370,7 @@ def compare(
     req = Request(
         method="POST",
         path="/v3/compare",
+        token_product="smart_selfie_compare",
         authenticated=True,
         idempotent=False,
         body_kind="multipart",
@@ -487,6 +497,7 @@ def id_status(country: str, id_type: str) -> Request:
 
 def _aml_request(
     path: str,
+    token_product: str,
     *,
     countries: List[str],
     user_details: dict,
@@ -507,6 +518,7 @@ def _aml_request(
     req = Request(
         method="POST",
         path=path,
+        token_product=token_product,
         authenticated=True,
         idempotent=idempotent,
         extra_headers=extra_headers or {},
@@ -546,6 +558,7 @@ def one_time_aml(
     """POST /v3/aml. countries and aliases are JSON-encoded parts; user_id in BODY."""
     return _aml_request(
         "/v3/aml",
+        "one_time_aml",
         countries=countries,
         full_name=full_name,
         user_details=user_details,
@@ -580,6 +593,7 @@ def one_time_aml_sync(
     """POST /v3/aml/sync. 200 carries the result. A key makes a retry safe."""
     return _aml_request(
         "/v3/aml/sync",
+        "one_time_aml",
         countries=countries,
         full_name=full_name,
         user_details=user_details,
@@ -618,6 +632,7 @@ def aml_monitoring(
     """POST /v3/aml/monitoring. full_name optional when search_existing_user."""
     return _aml_request(
         "/v3/aml/monitoring",
+        "aml",
         countries=countries,
         full_name=full_name,
         user_details=user_details,
@@ -653,6 +668,7 @@ def aml_monitoring_news(
             f"/v3/aml/monitoring/{quote(job_id, safe='')}"
             f"/news/{quote(reference, safe='')}"
         ),
+        token_product="aml",
         authenticated=True,
         idempotent=True,
         query=query,

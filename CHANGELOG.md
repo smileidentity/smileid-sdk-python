@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - AML Monitoring: `aml.monitor` (`POST /v3/aml/monitoring`) and `aml.monitoring_news` (`GET /v3/aml/monitoring/{job_id}/news/{reference}`).
 - The `OneTimeAmlResult` and `AmlMonitoringNewsResponse` response models.
 
+### Fixed
+
+- AML requests now mint a token with the `product` claim the spec requires: `one_time_aml` for `aml.screen` and `aml.screen_sync`, and `aml` for `aml.monitor` and `aml.monitoring_news`. Each operation's product now comes from the spec's `x-smile-token-product` and is set on the request builder, in place of a table of paths in the transport.
+
 ## [13.0.0] - 2026-11-09
 
 This is a major version because it changes the public API of 12.1.0. Version 12.2.0 was never published; its changes ship here.

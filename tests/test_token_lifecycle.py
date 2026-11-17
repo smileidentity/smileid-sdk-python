@@ -30,6 +30,7 @@ _DOC_IMAGES = {
     "document": JPEG_BYTES,
     "country": "NG",
 }
+_AML = {"countries": ["NG"], "full_name": "Jane Doe"}
 _SELFIE = {"selfie_image": JPEG_BYTES, "liveness_images": LIVENESS}
 
 
@@ -96,6 +97,18 @@ _OPERATIONS: Dict[str, Any] = {
             **_person(),
             user_id="user-1",
         ),
+    ),
+    "one_time_aml": (
+        "POST",
+        "/v3/aml",
+        202,
+        lambda c: c.aml.screen(**_AML, **_person(), user_id="user-1"),
+    ),
+    "aml": (
+        "POST",
+        "/v3/aml/monitoring",
+        202,
+        lambda c: c.aml.monitor(**_AML, **_person(), user_id="user-1"),
     ),
 }
 
@@ -170,6 +183,37 @@ def test_non_job_token_binds_nothing(respx_mock: Any, name: str) -> None:
     call(make_client())
     assert token_route.call_count == 1
     assert token_route.calls.last.request.content == b""
+
+
+def test_aml_sync_token_binds_its_user_and_product(respx_mock: Any) -> None:
+    token_route = _token_route(respx_mock)
+    _route(respx_mock, "POST", "/v3/aml/sync", 200)
+    respx_mock.post(f"{BASE_URL}/v3/aml/sync").mock(
+        return_value=httpx.Response(200, json={"status": "clear", "message": "ok"})
+    )
+    make_client().aml.screen_sync(**_AML, **_person(), user_id="user-1")
+    assert _token_claims(token_route.calls.last.request) == {
+        "user_id": "user-1",
+        "product": "one_time_aml",
+    }
+
+
+def test_aml_news_token_binds_only_product(respx_mock: Any) -> None:
+    token_route = _token_route(respx_mock)
+    respx_mock.get(f"{BASE_URL}/v3/aml/monitoring/job_x/news/ref_1").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "job_id": "job_x",
+                "product": "aml_monitoring_news",
+                "user_id": "user-1",
+                "meta": {"current_page": 1, "limit": 25, "total_count": 0},
+                "news": [],
+            },
+        )
+    )
+    make_client().aml.monitoring_news("job_x", "ref_1", news_category="financial_crime")
+    assert _token_claims(token_route.calls.last.request) == {"product": "aml"}
 
 
 def test_job_without_user_binds_only_product(respx_mock: Any) -> None:
