@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- The path-to-product table used to bind token claims now lives in `usesmileid.generated.operations` and follows the spec's `x-smile-token-product` at v3.1188.0. Behavior is unchanged.
+
 ## [13.0.0] - 2026-11-09
 
 This is a major version because it changes the public API of 12.1.0. Version 12.2.0 was never published; its changes ship here.

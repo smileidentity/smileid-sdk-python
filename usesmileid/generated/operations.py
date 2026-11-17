@@ -38,6 +38,20 @@ class Request:
     ok_statuses: Tuple[int, ...] = (200, 202)
 
 
+# Each operation's `x-smile-token-product` from the spec: the `product` claim
+# its token must carry. Paths absent here mint a token with no claims.
+TOKEN_PRODUCT_BY_PATH = {
+    "/v3/enhanced_kyc": "enhanced_kyc",
+    "/v3/document_verification": "document_verification",
+    "/v3/enhanced_document_verification": "enhanced_document_verification",
+    "/v3/residency_document_verification": "residency_document_verification",
+    "/v3/biometric_kyc": "biometric_kyc",
+    "/v3/registration": "smart_selfie_registration",
+    "/v3/authentication": "smart_selfie_authentication",
+    "/v3/compare": "smart_selfie_compare",
+}
+
+
 def _add_scalar(req: Request, name: str, value: object) -> None:
     if value is None:
         return
