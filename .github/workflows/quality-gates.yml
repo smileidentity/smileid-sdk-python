@@ -1,6 +1,6 @@
 # Quality gates for every pull request: public API breaks against the last
-# release, coverage of the generated layer and of changed lines, and the
-# scripts' own tests.
+# release, coverage of the generated layer and of changed lines, the scripts'
+# own tests, and the release checks on pull requests labelled `release`.
 #
 # A bot PR is one labelled `spec-sync`, `parity-port` or `release`, or opened
 # by an account whose login ends in `[bot]`. The changed-lines coverage and
@@ -109,3 +109,29 @@ jobs:
         run: scripts/test-bump-version.sh
       - name: Test release and coverage scripts
         run: scripts/test-release-scripts.sh
+
+  # Runs release.yml's checks before the tag is pushed. A tag can't be moved
+  # or reused once pushed, so a check that fails only at release time burns
+  # the version.
+  release-checks:
+    if: contains(github.event.pull_request.labels.*.name, 'release')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Lists merged PRs labelled `breaking`.
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history and tags, to find the previous release.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Check version, changelog and breaking changes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          scripts/check-release.sh "v$version" HEAD

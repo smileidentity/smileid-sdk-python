@@ -52,6 +52,14 @@ python -m pytest
 
 Lint with `ruff check .` and type-check with `mypy usesmileid`.
 
+The dev tools in `pyproject.toml`, and the build tools in `release.yml`, are pinned to exact versions, so a new tool release can't turn CI or a release red. Python 3.8 to 3.10 get the last versions that support 3.8. Bump the pins by hand, and check that the 3.8 test job still passes.
+
+## Releases
+
+Pushing a `vX.Y.Z` tag runs `release.yml`, which runs `scripts/check-release.sh` before it publishes. The tag must match the version in `pyproject.toml`, `CHANGELOG.md` must have a dated `## [X.Y.Z] - YYYY-MM-DD` heading for it, and the major version must match the PRs labelled `breaking` since the previous stable tag (`scripts/check-release-breaking.sh`).
+
+A tag can't be moved or reused once pushed, so a pull request labelled `release` runs the same checks in Quality Gates before the tag exists. They also fail if the version is already tagged. Fix any failure there before you tag.
+
 ## Org-wide conventions
 
 Org-wide agent conventions for Smile ID repositories live at [smileidentity/agents](https://github.com/smileidentity/agents) (private repository, internal contributors only).
