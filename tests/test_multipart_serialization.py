@@ -6,6 +6,7 @@ import json
 from typing import Any
 
 import httpx
+import pytest
 
 import usesmileid
 from tests.conftest import (
@@ -324,3 +325,206 @@ def test_unauthenticated_services_send_no_token(respx_mock: Any) -> None:
 
     assert not token_route.called  # no token fetched for unauthenticated ops
     assert "SmileID-Token" not in route.calls.last.request.headers
+
+
+AML_KWARGS: dict = {
+    "countries": ["NG", "KE"],
+    "full_name": "John Doe",
+    "user_details": user_details_dict(),
+    "consent": consent_dict(),
+}
+
+AML_RESULT = {
+    "status": "block",
+    "message": "Screening completed: potential matches identified.",
+    "reason": "aml_match_found",
+    "created_at": "2026-07-20T12:00:00.000Z",
+    "completed_at": "2026-07-20T12:00:01.000Z",
+    "product": "one_time_aml",
+    "partner_params": None,
+    "kyc_receipt": "https://receipts.smileidentity.com/abc",
+    "strict_match": True,
+    "no_of_persons_found": 1,
+    "people": [{"name": "Gbenga Afolabi", "sanctions": [{"list": "OFAC SDN"}]}],
+    "user_provided_info": {
+        "given_names": "John",
+        "last_name": "Doe",
+        "email": "john@example.com",
+        "phone_number": None,
+    },
+    "consent": {},
+    "antifraud": None,
+    "device_signals": None,
+}
+
+
+def test_one_time_aml_multipart_shape(respx_mock: Any, mock_token: Any) -> None:
+    route = respx_mock.post(f"{BASE_URL}/v3/aml").mock(
+        return_value=httpx.Response(202, json=ACCEPTED_LOWER)
+    )
+    accepted = make_client().aml.screen(
+        **AML_KWARGS,
+        birth_year="1990",
+        strict_match=False,
+        aliases=["Johnny Doe"],
+        search_existing_user=True,
+        user_id="user-1234",
+        callback_url="https://example.com/callback",
+        partner_params={"order_id": "ORD-1"},
+        metadata=[{"name": "k", "value": "v"}],
+    )
+    assert accepted.is_accepted
+    assert accepted.job_id == ACCEPTED["job_id"]
+
+    request = route.calls.last.request
+    parts = parse_multipart(request)
+    by_name = {p["name"]: p for p in parts}
+    assert part_names(parts) == [
+        "full_name",
+        "birth_year",
+        "strict_match",
+        "search_existing_user",
+        "user_id",
+        "callback_url",
+        "countries",
+        "aliases",
+        "user_details",
+        "consent",
+        "partner_params",
+        "metadata",
+    ]
+    assert by_name["full_name"]["body"] == b"John Doe"
+    assert by_name["birth_year"]["body"] == b"1990"
+    assert by_name["strict_match"]["body"] == b"false"
+    assert by_name["search_existing_user"]["body"] == b"true"
+    assert by_name["user_id"]["body"] == b"user-1234"
+    assert by_name["callback_url"]["body"] == b"https://example.com/callback"
+    # Arrays are single JSON-encoded parts, never repeated fields.
+    assert by_name["countries"]["content_type"] == "application/json"
+    assert by_name["countries"]["body"] == b'["NG","KE"]'
+    assert by_name["aliases"]["body"] == b'["Johnny Doe"]'
+    assert json.loads(by_name["consent"]["body"]) == consent_dict()
+    assert json.loads(by_name["partner_params"]["body"]) == {"order_id": "ORD-1"}
+    assert request.headers["SmileID-Token"]
+    assert "User-ID" not in request.headers
+    assert "SmileID-Idempotency-Key" not in request.headers
+
+
+def test_one_time_aml_sync_returns_result_and_sends_idempotency_key(
+    respx_mock: Any, mock_token: Any
+) -> None:
+    route = respx_mock.post(f"{BASE_URL}/v3/aml/sync").mock(
+        return_value=httpx.Response(200, json=AML_RESULT)
+    )
+    result = make_client().aml.screen_sync(**AML_KWARGS, idempotency_key="kuda-onboarding-8f14e45f")
+
+    assert result.status == "block"
+    assert result.reason == "aml_match_found"
+    assert result.no_of_persons_found == 1
+    assert result.people[0]["name"] == "Gbenga Afolabi"
+    assert result.user_provided_info is not None
+    assert result.user_provided_info.given_names == "John"
+    assert result.kyc_receipt == "https://receipts.smileidentity.com/abc"
+
+    request = route.calls.last.request
+    assert request.headers["SmileID-Idempotency-Key"] == "kuda-onboarding-8f14e45f"
+    by_name = {p["name"]: p for p in parse_multipart(request)}
+    assert by_name["countries"]["body"] == b'["NG","KE"]'
+    assert "callback_url" not in by_name
+
+
+def test_one_time_aml_sync_retries_only_with_idempotency_key(
+    respx_mock: Any, mock_token: Any
+) -> None:
+    route = respx_mock.post(f"{BASE_URL}/v3/aml/sync").mock(
+        side_effect=[
+            httpx.Response(503, json={"message": "later"}),
+            httpx.Response(200, json=AML_RESULT),
+        ]
+    )
+    result = make_client().aml.screen_sync(**AML_KWARGS, idempotency_key="kuda-onboarding-8f14e45f")
+    assert result.status == "block"
+    assert route.call_count == 2
+
+    route.reset()
+    route.mock(return_value=httpx.Response(503, json={"message": "later"}))
+    with pytest.raises(usesmileid.errors.SmileIDError):
+        make_client().aml.screen_sync(**AML_KWARGS)
+    assert route.call_count == 1
+
+
+def test_aml_monitoring_multipart_shape(respx_mock: Any, mock_token: Any) -> None:
+    route = respx_mock.post(f"{BASE_URL}/v3/aml/monitoring").mock(
+        return_value=httpx.Response(
+            202, json={**ACCEPTED_LOWER, "created_at": "2026-03-10T12:00:00.000Z"}
+        )
+    )
+    accepted = make_client().aml.monitor(
+        countries=["NG", "GH"],
+        user_details=user_details_dict(),
+        consent=consent_dict(),
+        search_existing_user=True,
+        user_id="user-1234",
+    )
+    assert accepted.is_accepted
+    assert accepted.created_at == "2026-03-10T12:00:00.000Z"
+
+    parts = parse_multipart(route.calls.last.request)
+    assert part_names(parts) == [
+        "search_existing_user",
+        "user_id",
+        "countries",
+        "user_details",
+        "consent",
+    ]
+    by_name = {p["name"]: p for p in parts}
+    assert by_name["countries"]["body"] == b'["NG","GH"]'
+    assert by_name["search_existing_user"]["body"] == b"true"
+
+
+NEWS = {
+    "job_id": "a1b2c3d4e5",
+    "product": "aml_monitoring_news",
+    "user_id": "user_123",
+    "meta": {"current_page": 2, "limit": 10, "total_count": 11},
+    "news": [
+        {
+            "body": "Sample adverse-media content.",
+            "published_date": "2026-01-15T12:00:00.000Z",
+            "publisher": "Example News Publisher",
+            "publisher_country_code": "NG",
+            "title": "Sample AML Monitoring News Item",
+            "url": "https://example.com/news/sample",
+        }
+    ],
+}
+
+
+def test_aml_monitoring_news_request_and_response(respx_mock: Any, mock_token: Any) -> None:
+    route = respx_mock.get(f"{BASE_URL}/v3/aml/monitoring/a1b2c3d4e5/news/ref%2F001").mock(
+        return_value=httpx.Response(200, json=NEWS)
+    )
+    news = make_client().aml.monitoring_news(
+        "a1b2c3d4e5", "ref/001", news_category="financial_crime", page=2, limit=10
+    )
+    request = route.calls.last.request
+    assert dict(request.url.params) == {
+        "news_category": "financial_crime",
+        "page": "2",
+        "limit": "10",
+    }
+    assert request.headers["SmileID-Token"]
+    assert request.content == b""
+    assert news.meta.current_page == 2
+    assert news.meta.total_count == 11
+    assert news.news[0].publisher_country_code == "NG"
+    assert news.news[0].title == "Sample AML Monitoring News Item"
+
+
+def test_aml_monitoring_news_omits_unset_paging(respx_mock: Any, mock_token: Any) -> None:
+    route = respx_mock.get(f"{BASE_URL}/v3/aml/monitoring/job1/news/ref1").mock(
+        return_value=httpx.Response(200, json={**NEWS, "news": []})
+    )
+    news = make_client().aml.monitoring_news("job1", "ref1", news_category="other")
+    assert dict(route.calls.last.request.url.params) == {"news_category": "other"}
+    assert news.news == []

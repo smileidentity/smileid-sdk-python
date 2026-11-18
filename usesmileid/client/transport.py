@@ -36,19 +36,6 @@ _RETRYABLE_STATUSES = frozenset({408, 429, 500, 502, 503, 504})
 # Upper bound on a server-provided Retry-After delay, in seconds.
 _MAX_RETRY_AFTER_SECONDS = 60.0
 
-# Mirrors the API authorizer: a token bound to a product is accepted only on
-# that product's endpoint. Paths absent here mint a token with no claims.
-_PRODUCT_BY_PATH = {
-    "/v3/enhanced_kyc": "enhanced_kyc",
-    "/v3/document_verification": "document_verification",
-    "/v3/enhanced_document_verification": "enhanced_document_verification",
-    "/v3/residency_document_verification": "residency_document_verification",
-    "/v3/biometric_kyc": "biometric_kyc",
-    "/v3/registration": "smart_selfie_registration",
-    "/v3/authentication": "smart_selfie_authentication",
-    "/v3/compare": "smart_selfie_compare",
-}
-
 
 class Transport:
     def __init__(
@@ -88,7 +75,9 @@ class Transport:
         Tokens are never shared between requests: a grant authorises a
         captureless job for one user, and must not reach any other call.
         """
-        product = _PRODUCT_BY_PATH.get(request.path)
+        # A token bound to a product is accepted only on that product's endpoint;
+        # operations without one mint a token with no claims.
+        product = request.token_product
         user_id = _job_user_id(request) if product is not None else None
         if use_enrolled_image and user_id is None:
             raise ValidationError("user_id is required when use_enrolled_image is true")
