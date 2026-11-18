@@ -19,33 +19,69 @@ jobs:
     container:
       image: semgrep/semgrep:1.157.0
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run Semgrep
-        continue-on-error: true
-        run: semgrep scan --config p/security-audit --sarif -o semgrep.sarif
+        # Fails when the scan errors or finds anything at ERROR severity. The
+        # steps below still run, so the findings are reported either way.
+        run: |
+          status=0
+          semgrep scan --config p/security-audit --sarif -o semgrep.sarif || status=$?
+          if [ "$status" -ne 0 ]; then
+            echo "::error::Semgrep exited with status $status, so the scan did not finish."
+            exit "$status"
+          fi
+          # A result's level is its own, or else its rule's default level.
+          errors=$(jq '[.runs[]
+            | ((.tool.driver.rules // []) | map({key: .id, value: (.defaultConfiguration.level // "warning")}) | from_entries) as $levels
+            | .results[]
+            | select((.level // $levels[.ruleId]) == "error")] | length' semgrep.sarif)
+          if [ "$errors" -gt 0 ]; then
+            echo "::error::Semgrep found $errors finding(s) at ERROR severity."
+            exit 1
+          fi
+          echo "Semgrep found nothing at ERROR severity."
 
+      # Code scanning needs Code Security on a private repository, so private
+      # repositories skip the upload unless the SEMGREP_UPLOAD_SARIF variable
+      # is 'true'. Uploads never fail the job.
       - name: Upload SARIF to GitHub Security
-        if: always()
+        id: sarif
+        if: always() && (!github.event.repository.private || vars.SEMGREP_UPLOAD_SARIF == 'true')
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           sarif_file: semgrep.sarif
 
+      - name: Warn if the SARIF upload did not happen
+        if: always() && steps.sarif.outcome != 'success'
+        env:
+          OUTCOME: ${{ steps.sarif.outcome }}
+        run: |
+          if [ "$OUTCOME" = "skipped" ]; then
+            echo "::warning::Skipped the upload to GitHub code scanning, because this repository is private. Enable Code Security and set the SEMGREP_UPLOAD_SARIF variable to 'true' to upload."
+          else
+            echo "::warning::Could not upload the Semgrep results to GitHub code scanning. The step log says why."
+          fi
+
       - name: Import results into DefectDojo
         if: always()
-        continue-on-error: true
         env:
           DEFECTDOJO_URL: ${{ secrets.DEFECTDOJO_URL }}
           DEFECTDOJO_API_TOKEN: ${{ secrets.DEFECTDOJO_API_TOKEN }}
           REPO_NAME: ${{ github.event.repository.name }}
           BRANCH_TAG: ${{ github.head_ref || github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
         run: |
-          if [ ! -s semgrep.sarif ]; then
-            echo "No semgrep.sarif file found, skipping DefectDojo import"
+          if [ -z "$DEFECTDOJO_URL" ] || [ -z "$DEFECTDOJO_API_TOKEN" ]; then
+            echo "::warning::Skipped the DefectDojo import, because DEFECTDOJO_URL or DEFECTDOJO_API_TOKEN is not set."
             exit 0
           fi
-          curl -sS -f \
+          if [ ! -s semgrep.sarif ]; then
+            echo "::warning::Skipped the DefectDojo import, because there is no semgrep.sarif file."
+            exit 0
+          fi
+          if ! curl -sS -f \
             -H "Authorization: Token ${DEFECTDOJO_API_TOKEN}" \
             -F "scan_type=SARIF" \
             -F "file=@semgrep.sarif" \
@@ -55,9 +91,11 @@ jobs:
             -F "auto_create_context=true" \
             -F "close_old_findings=true" \
             -F "deduplication_on_engagement=true" \
-            -F "commit_hash=${{ github.sha }}" \
+            -F "commit_hash=${COMMIT_SHA}" \
             -F "branch_tag=${BRANCH_TAG}" \
-            "${DEFECTDOJO_URL}/api/v2/reimport-scan/"
+            "${DEFECTDOJO_URL}/api/v2/reimport-scan/"; then
+            echo "::warning::Could not import the Semgrep results into DefectDojo."
+          fi
 
       - name: Comment findings on PR
         if: github.event_name == 'pull_request' && always()
@@ -112,8 +150,8 @@ jobs:
               if len(findings) > 25:
                   body += f"\n*... and {len(findings) - 25} more. "
                   body += "See full results in workflow logs.*\n"
-              body += "\n> ⚠️ These findings are **non-blocking**. "
-              body += "Please review and address as appropriate.\n"
+              body += "\n> Findings at ERROR severity fail the Semgrep check. "
+              body += "Review the others and fix them where needed.\n"
           else:
               body = f"{marker}\n## 🔍 Semgrep Security Scan Results\n\n"
               body += "✅ No security findings detected by "

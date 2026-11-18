@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 # Ties a release's major version to the PRs labelled `breaking` that it ships.
 #
-# Usage: scripts/check-release-breaking.sh <tag>
+# Usage: scripts/check-release-breaking.sh <tag> [<commit>]
 #
 # A release ships the commits in <previous stable tag>..<tag>. If any PR
 # labelled `breaking` was merged within that range, the major version must
 # increase. If the major version increases, at least one such PR must exist,
 # except for the move from 0.x to 1.0.0, which stabilises the API.
+#
+# Pass <commit> to check a tag that doesn't exist yet. The commit the tag will
+# point to stands in for it. check-release.sh does this for pull requests
+# labelled `release`.
 #
 # The same rule applies to pre-release tags such as v14.0.0rc1: the previous
 # stable tag is the comparison point, so a pre-release of a major version
@@ -19,16 +23,17 @@
 
 set -euo pipefail
 
-if [ "$#" -ne 1 ]; then
-  echo "usage: $0 <tag>" >&2
+if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
+  echo "usage: $0 <tag> [<commit>]" >&2
   exit 2
 fi
 tag="$1"
+commit="${2:-$1}"
 here="$(cd "$(dirname "$0")" && pwd)"
 
 prev=""
-if git rev-parse --quiet --verify "$tag^{commit}^" >/dev/null; then
-  prev=$("$here/previous-release-tag.sh" "$tag^")
+if git rev-parse --quiet --verify "$commit^{commit}^" >/dev/null; then
+  prev=$("$here/previous-release-tag.sh" "$commit^")
 fi
 if [ -z "$prev" ]; then
   echo "::notice::No previous stable v* tag before $tag, so there is nothing to compare against."
@@ -49,7 +54,7 @@ fi
 breaking=""
 while IFS=$'\t' read -r oid label; do
   [ -n "$oid" ] || continue
-  if git merge-base --is-ancestor "$oid" "$tag" 2>/dev/null &&
+  if git merge-base --is-ancestor "$oid" "$commit" 2>/dev/null &&
     ! git merge-base --is-ancestor "$oid" "$prev" 2>/dev/null; then
     breaking="${breaking:+$breaking$'\n'}$label"
   fi
