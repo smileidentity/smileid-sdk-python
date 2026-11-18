@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Tests previous-release-tag.sh, check-release-breaking.sh and
-# check-coverage-exclusions.sh against throwaway git repositories.
+# Tests previous-release-tag.sh, check-release-breaking.sh, check-release.sh
+# and check-coverage-exclusions.sh against throwaway git repositories.
 #
 # Usage: scripts/test-release-scripts.sh
 
@@ -24,7 +24,7 @@ repo="$work/repo"
 git init -q -b main "$repo"
 mkdir -p "$repo/scripts"
 cp "$here/previous-release-tag.sh" "$here/check-release-breaking.sh" \
-  "$here/check-coverage-exclusions.sh" "$repo/scripts/"
+  "$here/check-release.sh" "$here/check-coverage-exclusions.sh" "$repo/scripts/"
 cd "$repo"
 
 commit() {
@@ -99,6 +99,41 @@ case "$out" in
   *) fail "exclusions: expected a hit at notes.txt:3, got: $out" ;;
 esac
 scripts/check-coverage-exclusions.sh HEAD >/dev/null || fail "exclusions: empty diff should pass"
+
+# check-release.sh, as a pull request labelled `release` runs it: the tag
+# doesn't exist yet, so HEAD stands in for it.
+release_files() {
+  printf '[project]\nname = "x"\nversion = "%s"\n' "$1" >pyproject.toml
+  printf '# Changelog\n\n## [Unreleased]\n\n%s\n' "$2" >CHANGELOG.md
+  git add pyproject.toml CHANGELOG.md && commit "release $1" >/dev/null
+}
+expect_check() {
+  local want="$1" rc=0
+  shift
+  scripts/check-release.sh "$@" >"$work/out" 2>&1 || rc=$?
+  if [ "$want" = pass ] && [ "$rc" -ne 0 ]; then
+    fail "check-release $*: expected pass"
+    cat "$work/out" >&2
+  elif [ "$want" = fail ] && [ "$rc" -eq 0 ]; then
+    fail "check-release $*: expected failure"
+    cat "$work/out" >&2
+  fi
+}
+release_files 3.1.0 '## [3.1.0] - 2026-01-02'
+expect_check pass v3.1.0 HEAD
+expect_check fail v3.2.0 HEAD # pyproject.toml says 3.1.0
+release_files 3.1.0 '## [3.1.0]'
+expect_check fail v3.1.0 HEAD # the heading has no date
+release_files 3.0.0 '## [3.0.0] - 2026-01-02'
+expect_check fail v3.0.0 HEAD # v3.0.0 is already tagged
+c7=$(commit c7)
+printf '%s\t#7 Break seven\n' "$c7" >>"$prs"
+release_files 3.1.0 '## [3.1.0] - 2026-01-02'
+expect_check fail v3.1.0 HEAD # ships #7 without a major bump
+release_files 4.0.0 '## [4.0.0] - 2026-01-02'
+expect_check pass v4.0.0 HEAD
+git tag v4.0.0
+expect_check pass v4.0.0 # the pushed tag, as release.yml runs it
 
 if [ "$failures" -ne 0 ]; then
   echo "$failures release script test(s) failed" >&2

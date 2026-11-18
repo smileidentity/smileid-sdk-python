@@ -29,9 +29,11 @@ from usesmileid._version import __version__
 from usesmileid.client import Client, ClientConfig
 from usesmileid.generated.models import (
     AcceptedResponse,
+    AmlMonitoringNewsResponse,
     BankCodesResponse,
     IdStatusResponse,
     JobStatus,
+    OneTimeAmlResult,
     ReplayCallbackResponse,
     ReportUserFraudResponse,
     SupportedDocumentsResponse,
@@ -47,7 +49,9 @@ __all__ = [
     "UserDetails",
     "errors",
     "AcceptedResponse",
+    "AmlMonitoringNewsResponse",
     "JobStatus",
+    "OneTimeAmlResult",
     "ReplayCallbackResponse",
     "ReportUserFraudResponse",
     "BankCodesResponse",

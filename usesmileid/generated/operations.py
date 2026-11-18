@@ -36,20 +36,8 @@ class Request:
     binary_parts: List[Tuple[str, str, bytes, str]] = field(default_factory=list)
     body_kind: str = "none"  # "multipart" | "none"
     ok_statuses: Tuple[int, ...] = (200, 202)
-
-
-# Each operation's `x-smile-token-product` from the spec: the `product` claim
-# its token must carry. Paths absent here mint a token with no claims.
-TOKEN_PRODUCT_BY_PATH = {
-    "/v3/enhanced_kyc": "enhanced_kyc",
-    "/v3/document_verification": "document_verification",
-    "/v3/enhanced_document_verification": "enhanced_document_verification",
-    "/v3/residency_document_verification": "residency_document_verification",
-    "/v3/biometric_kyc": "biometric_kyc",
-    "/v3/registration": "smart_selfie_registration",
-    "/v3/authentication": "smart_selfie_authentication",
-    "/v3/compare": "smart_selfie_compare",
-}
+    # The spec's x-smile-token-product: the `product` claim the token needs.
+    token_product: Optional[str] = None
 
 
 def _add_scalar(req: Request, name: str, value: object) -> None:
@@ -124,6 +112,7 @@ def enhanced_kyc(
     req = Request(
         method="POST",
         path="/v3/enhanced_kyc",
+        token_product="enhanced_kyc",
         authenticated=True,
         idempotent=False,
         user_id_header=user_id,
@@ -161,6 +150,7 @@ def document_verification(
     req = Request(
         method="POST",
         path="/v3/document_verification",
+        token_product="document_verification",
         authenticated=True,
         idempotent=False,
         needs_partner_id_header=True,
@@ -212,6 +202,7 @@ def enhanced_document_verification(
         user_id=user_id,
     )
     req.path = "/v3/enhanced_document_verification"
+    req.token_product = "enhanced_document_verification"
     return req
 
 
@@ -247,6 +238,7 @@ def residency_document_verification(
         user_id=user_id,
     )
     req.path = "/v3/residency_document_verification"
+    req.token_product = "residency_document_verification"
     _add_binary(req, "visa", visa)
     return req
 
@@ -270,6 +262,7 @@ def biometric_kyc(
     req = Request(
         method="POST",
         path="/v3/biometric_kyc",
+        token_product="biometric_kyc",
         authenticated=True,
         idempotent=False,
         needs_partner_id_header=True,
@@ -307,6 +300,7 @@ def registration(
     req = Request(
         method="POST",
         path="/v3/registration",
+        token_product="smart_selfie_registration",
         authenticated=True,
         idempotent=False,
         user_id_header=user_id,
@@ -340,6 +334,7 @@ def authentication(
     req = Request(
         method="POST",
         path="/v3/authentication",
+        token_product="smart_selfie_authentication",
         authenticated=True,
         idempotent=False,
         body_kind="multipart",
@@ -375,6 +370,7 @@ def compare(
     req = Request(
         method="POST",
         path="/v3/compare",
+        token_product="smart_selfie_compare",
         authenticated=True,
         idempotent=False,
         body_kind="multipart",
@@ -496,4 +492,185 @@ def id_status(country: str, id_type: str) -> Request:
         authenticated=True,
         idempotent=True,
         query={"country": country, "id_type": id_type},
+    )
+
+
+def _aml_request(
+    path: str,
+    token_product: str,
+    *,
+    countries: List[str],
+    user_details: dict,
+    consent: dict,
+    full_name: Optional[str],
+    birth_year: Optional[str],
+    strict_match: Optional[bool],
+    aliases: Optional[List[str]],
+    search_existing_user: Optional[bool],
+    user_id: Optional[str],
+    callback_url: Optional[str],
+    partner_params: Optional[dict],
+    metadata: Optional[list],
+    extra_headers: Optional[Dict[str, str]] = None,
+    idempotent: bool = False,
+    ok_statuses: Tuple[int, ...] = (200, 202),
+) -> Request:
+    req = Request(
+        method="POST",
+        path=path,
+        token_product=token_product,
+        authenticated=True,
+        idempotent=idempotent,
+        extra_headers=extra_headers or {},
+        body_kind="multipart",
+        ok_statuses=ok_statuses,
+    )
+    _add_scalar(req, "full_name", full_name)
+    _add_scalar(req, "birth_year", birth_year)
+    _add_scalar(req, "strict_match", strict_match)
+    _add_scalar(req, "search_existing_user", search_existing_user)
+    _add_scalar(req, "user_id", user_id)
+    _add_scalar(req, "callback_url", callback_url)
+    _add_json(req, "countries", countries)
+    _add_json(req, "aliases", aliases)
+    _add_json(req, "user_details", user_details)
+    _add_json(req, "consent", consent)
+    _add_json(req, "partner_params", partner_params)
+    _add_json(req, "metadata", metadata)
+    return req
+
+
+def one_time_aml(
+    *,
+    countries: List[str],
+    full_name: str,
+    user_details: dict,
+    consent: dict,
+    birth_year: Optional[str] = None,
+    strict_match: Optional[bool] = None,
+    aliases: Optional[List[str]] = None,
+    search_existing_user: Optional[bool] = None,
+    user_id: Optional[str] = None,
+    callback_url: Optional[str] = None,
+    partner_params: Optional[dict] = None,
+    metadata: Optional[list] = None,
+) -> Request:
+    """POST /v3/aml. countries and aliases are JSON-encoded parts; user_id in BODY."""
+    return _aml_request(
+        "/v3/aml",
+        "one_time_aml",
+        countries=countries,
+        full_name=full_name,
+        user_details=user_details,
+        consent=consent,
+        birth_year=birth_year,
+        strict_match=strict_match,
+        aliases=aliases,
+        search_existing_user=search_existing_user,
+        user_id=user_id,
+        callback_url=callback_url,
+        partner_params=partner_params,
+        metadata=metadata,
+    )
+
+
+def one_time_aml_sync(
+    *,
+    countries: List[str],
+    full_name: str,
+    user_details: dict,
+    consent: dict,
+    birth_year: Optional[str] = None,
+    strict_match: Optional[bool] = None,
+    aliases: Optional[List[str]] = None,
+    search_existing_user: Optional[bool] = None,
+    user_id: Optional[str] = None,
+    callback_url: Optional[str] = None,
+    partner_params: Optional[dict] = None,
+    metadata: Optional[list] = None,
+    idempotency_key: Optional[str] = None,
+) -> Request:
+    """POST /v3/aml/sync. 200 carries the result. A key makes a retry safe."""
+    return _aml_request(
+        "/v3/aml/sync",
+        "one_time_aml",
+        countries=countries,
+        full_name=full_name,
+        user_details=user_details,
+        consent=consent,
+        birth_year=birth_year,
+        strict_match=strict_match,
+        aliases=aliases,
+        search_existing_user=search_existing_user,
+        user_id=user_id,
+        callback_url=callback_url,
+        partner_params=partner_params,
+        metadata=metadata,
+        extra_headers=(
+            {"SmileID-Idempotency-Key": idempotency_key} if idempotency_key else {}
+        ),
+        idempotent=bool(idempotency_key),
+        ok_statuses=(200,),
+    )
+
+
+def aml_monitoring(
+    *,
+    countries: List[str],
+    user_details: dict,
+    consent: dict,
+    full_name: Optional[str] = None,
+    birth_year: Optional[str] = None,
+    strict_match: Optional[bool] = None,
+    aliases: Optional[List[str]] = None,
+    search_existing_user: Optional[bool] = None,
+    user_id: Optional[str] = None,
+    callback_url: Optional[str] = None,
+    partner_params: Optional[dict] = None,
+    metadata: Optional[list] = None,
+) -> Request:
+    """POST /v3/aml/monitoring. full_name optional when search_existing_user."""
+    return _aml_request(
+        "/v3/aml/monitoring",
+        "aml",
+        countries=countries,
+        full_name=full_name,
+        user_details=user_details,
+        consent=consent,
+        birth_year=birth_year,
+        strict_match=strict_match,
+        aliases=aliases,
+        search_existing_user=search_existing_user,
+        user_id=user_id,
+        callback_url=callback_url,
+        partner_params=partner_params,
+        metadata=metadata,
+    )
+
+
+def aml_monitoring_news(
+    job_id: str,
+    reference: str,
+    *,
+    news_category: str,
+    page: Optional[int] = None,
+    limit: Optional[int] = None,
+) -> Request:
+    """GET /v3/aml/monitoring/{job_id}/news/{reference}."""
+    query = {"news_category": news_category}
+    if page is not None:
+        query["page"] = str(page)
+    if limit is not None:
+        query["limit"] = str(limit)
+    return Request(
+        method="GET",
+        path=(
+            f"/v3/aml/monitoring/{quote(job_id, safe='')}"
+            f"/news/{quote(reference, safe='')}"
+        ),
+        token_product="aml",
+        authenticated=True,
+        idempotent=True,
+        query=query,
+        ok_statuses=(200,),
     )
