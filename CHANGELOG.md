@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [13.1.0] - 2026-11-19
+
 ### Added
 
 - AML screening: `aml.screen` (`POST /v3/aml`) and `aml.screen_sync` (`POST /v3/aml/sync`), which returns a `OneTimeAmlResult` and accepts an `idempotency_key`.
@@ -69,7 +71,8 @@ First public release of the Smile ID Python server SDK.
   error the API returns.
 - Automatic token management and retries for idempotent operations.
 
-[Unreleased]: https://github.com/smileidentity/smileid-sdk-python/compare/v13.0.0...HEAD
+[Unreleased]: https://github.com/smileidentity/smileid-sdk-python/compare/v13.1.0...HEAD
+[13.1.0]: https://github.com/smileidentity/smileid-sdk-python/compare/v13.0.0...v13.1.0
 [13.0.0]: https://github.com/smileidentity/smileid-sdk-python/compare/v12.1.0...v13.0.0
 [12.1.0]: https://github.com/smileidentity/smileid-sdk-python/compare/v12.0.0...v12.1.0
 [12.0.0]: https://github.com/smileidentity/smileid-sdk-python/releases/tag/v12.0.0
