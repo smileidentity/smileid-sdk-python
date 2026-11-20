@@ -582,12 +582,13 @@ def test_basic_kyc_multipart_shape(respx_mock: Any, mock_token: Any) -> None:
         operator="mtn",
         partner_params={"order_id": "ORD-1"},
         metadata=[{"name": "k", "value": "v"}],
-        user_id="user_01h8x9y2z3a4b5c6d7e8f9g0h1",
     )
     assert accepted.is_accepted
 
     request = route.calls.last.request
-    by_name = {p["name"]: p for p in parse_multipart(request)}
+    parts = parse_multipart(request)
+    by_name = {p["name"]: p for p in parts}
+    assert len(parts) == len(by_name), "a multipart part name appears twice"
     assert list(by_name) == [
         "country",
         "id_type",
@@ -611,7 +612,7 @@ def test_basic_kyc_multipart_shape(respx_mock: Any, mock_token: Any) -> None:
     assert json.loads(by_name["consent"]["body"]) == consent_dict()
     assert json.loads(by_name["partner_params"]["body"]) == {"order_id": "ORD-1"}
     assert json.loads(by_name["metadata"]["body"]) == [{"name": "k", "value": "v"}]
-    assert request.headers["User-ID"] == "user_01h8x9y2z3a4b5c6d7e8f9g0h1"
+    assert "User-ID" not in request.headers
     assert "SmileID-Partner-ID" not in request.headers
     assert request.headers["SmileID-Token"]
     assert request.headers["SmileID-Source-SDK"] == "python"
@@ -638,14 +639,68 @@ def test_basic_kyc_sync_returns_result_and_is_never_retried(
     assert result.kyc_receipt == "https://portal.example/receipt"
 
     request = route.calls.last.request
-    by_name = {p["name"]: p for p in parse_multipart(request)}
+    parts = parse_multipart(request)
+    by_name = {p["name"]: p for p in parts}
+    assert len(parts) == len(by_name), "a multipart part name appears twice"
     assert by_name["id_type"]["body"] == b"NIN"
     assert "callback_url" not in by_name
     assert "User-ID" not in request.headers
     assert "SmileID-Idempotency-Key" not in request.headers
 
-    failed = {"status": "Failed Dependency", "message": "x"}
-    route.mock(return_value=httpx.Response(424, json=failed))
-    with pytest.raises(usesmileid.errors.SmileIDError):
+
+def test_basic_kyc_sync_is_never_retried(respx_mock: Any, mock_token: Any) -> None:
+    # A 500 is retried for idempotent requests, so one attempt proves the sync call isn't.
+    route = respx_mock.post(f"{BASE_URL}/v3/basic_kyc/sync").mock(
+        return_value=httpx.Response(500, json={"status": "Internal Server Error", "message": "x"})
+    )
+    with pytest.raises(usesmileid.errors.APIError) as raised:
         make_client().basic_kyc.verify_sync(**BASIC_KYC_KWARGS)
-    assert route.call_count == 2  # the 424 was not retried
+    assert raised.value.status_code == 500
+    assert route.call_count == 1
+
+
+def test_basic_kyc_sync_parses_a_null_match_results(respx_mock: Any, mock_token: Any) -> None:
+    body = {**BASIC_KYC_RESULT, "status": "error", "match_results": None, "kyc_receipt": None}
+    respx_mock.post(f"{BASE_URL}/v3/basic_kyc/sync").mock(
+        return_value=httpx.Response(200, json=body)
+    )
+    result = make_client().basic_kyc.verify_sync(**BASIC_KYC_KWARGS)
+    assert result.status == "error"
+    assert result.match_results is None
+    assert result.kyc_receipt is None
+
+
+def test_basic_kyc_sync_never_sends_the_default_callback(respx_mock: Any, mock_token: Any) -> None:
+    route = respx_mock.post(f"{BASE_URL}/v3/basic_kyc/sync").mock(
+        return_value=httpx.Response(200, json=BASIC_KYC_RESULT)
+    )
+    client = make_client(default_callback_url="https://example.com/default")
+    client.basic_kyc.verify_sync(**BASIC_KYC_KWARGS)
+    names = [p["name"] for p in parse_multipart(route.calls.last.request)]
+    assert "callback_url" not in names
+
+    client.basic_kyc.verify_sync(**BASIC_KYC_KWARGS, callback_url="https://example.com/given")
+    parts = {p["name"]: p for p in parse_multipart(route.calls.last.request)}
+    assert parts["callback_url"]["body"] == b"https://example.com/given"
+
+
+@pytest.mark.parametrize("sync", [False, True])
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"user_details": {"given_names": "John", "last_name": "Doe"}},
+        {"user_details": {"last_name": "Doe", "email": "john@example.com"}},
+        {"callback_url": "http://example.com/callback"},
+    ],
+    ids=["no-email-or-phone", "no-given-name", "http-callback"],
+)
+def test_basic_kyc_rejects_invalid_input_before_sending(
+    respx_mock: Any, mock_token: Any, sync: bool, change: dict
+) -> None:
+    path = "/v3/basic_kyc/sync" if sync else "/v3/basic_kyc"
+    route = respx_mock.post(f"{BASE_URL}{path}")
+    resource = make_client().basic_kyc
+    call = resource.verify_sync if sync else resource.verify
+    with pytest.raises(usesmileid.errors.ValidationError):
+        call(**{**BASIC_KYC_KWARGS, **change})
+    assert route.call_count == 0

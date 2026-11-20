@@ -104,12 +104,6 @@ _OPERATIONS: Dict[str, Any] = {
         202,
         lambda c: c.aml.screen(**_AML, **_person(), user_id="user-1"),
     ),
-    "basic_kyc": (
-        "POST",
-        "/v3/basic_kyc",
-        202,
-        lambda c: c.basic_kyc.verify(**_KYC_ID, **_person(), user_id="user-1"),
-    ),
     "aml": (
         "POST",
         "/v3/aml/monitoring",
@@ -204,16 +198,19 @@ def test_aml_sync_token_binds_its_user_and_product(respx_mock: Any) -> None:
     }
 
 
-def test_basic_kyc_sync_token_binds_its_user_and_product(respx_mock: Any) -> None:
+@pytest.mark.parametrize("sync", [False, True])
+def test_basic_kyc_token_binds_only_its_product(respx_mock: Any, sync: bool) -> None:
+    # The spec gives Basic KYC no user_id, so the token carries only the product.
     token_route = _token_route(respx_mock)
-    respx_mock.post(f"{BASE_URL}/v3/basic_kyc/sync").mock(
-        return_value=httpx.Response(200, json={"status": "clear", "message": "ok"})
-    )
-    make_client().basic_kyc.verify_sync(**_KYC_ID, **_person(), user_id="user-1")
-    assert _token_claims(token_route.calls.last.request) == {
-        "user_id": "user-1",
-        "product": "basic_kyc",
-    }
+    if sync:
+        respx_mock.post(f"{BASE_URL}/v3/basic_kyc/sync").mock(
+            return_value=httpx.Response(200, json={"status": "clear", "message": "ok"})
+        )
+        make_client().basic_kyc.verify_sync(**_KYC_ID, **_person())
+    else:
+        _route(respx_mock, "POST", "/v3/basic_kyc", 202)
+        make_client().basic_kyc.verify(**_KYC_ID, **_person())
+    assert _token_claims(token_route.calls.last.request) == {"product": "basic_kyc"}
 
 
 def test_aml_news_token_binds_only_product(respx_mock: Any) -> None:

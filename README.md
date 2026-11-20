@@ -142,7 +142,7 @@ accepted = smile.basic_kyc.verify(
     consent=consent,
 )
 
-# Result is returned in the response; no callback is sent.
+# Result is returned in the response.
 result = smile.basic_kyc.verify_sync(
     country="NG",
     id_type="NIN",
@@ -150,10 +150,13 @@ result = smile.basic_kyc.verify_sync(
     user_details=user_details,
     consent=consent,
 )
-print(result.status, result.match_results.overall)
+if result.match_results is not None:
+    print(result.status, result.match_results.overall)
+else:
+    print(result.status, result.message)
 ```
 
-`verify_sync` is never retried, because a repeat would run and bill a second lookup. If it fails with a 408, 424 or 500, read the outcome with `smile.verifications.retrieve(job_id)`.
+`verify_sync` is never retried, because a repeat would run and bill a second lookup. If it fails with a 408, 424 or 500, the job may still have run, so don't resubmit it automatically. The sync endpoint ignores `callback_url`, so the client's `default_callback_url` isn't sent.
 
 ### Enhanced document verification
 

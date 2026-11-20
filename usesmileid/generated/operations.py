@@ -144,7 +144,6 @@ def _basic_kyc_request(
     operator: Optional[str],
     partner_params: Optional[dict],
     metadata: Optional[list],
-    user_id: Optional[str],
     ok_statuses: Tuple[int, ...],
 ) -> Request:
     req = Request(
@@ -153,7 +152,6 @@ def _basic_kyc_request(
         token_product="basic_kyc",
         authenticated=True,
         idempotent=False,
-        user_id_header=user_id,
         body_kind="multipart",
         ok_statuses=ok_statuses,
     )
@@ -182,9 +180,8 @@ def basic_kyc(
     operator: Optional[str] = None,
     partner_params: Optional[dict] = None,
     metadata: Optional[list] = None,
-    user_id: Optional[str] = None,
 ) -> Request:
-    """POST /v3/basic_kyc. No Partner-ID header; user_id in header."""
+    """POST /v3/basic_kyc. No Partner-ID or User-ID header."""
     return _basic_kyc_request(
         "/v3/basic_kyc",
         country=country,
@@ -197,7 +194,6 @@ def basic_kyc(
         operator=operator,
         partner_params=partner_params,
         metadata=metadata,
-        user_id=user_id,
         ok_statuses=(200, 202),
     )
 
@@ -214,7 +210,6 @@ def basic_kyc_sync(
     operator: Optional[str] = None,
     partner_params: Optional[dict] = None,
     metadata: Optional[list] = None,
-    user_id: Optional[str] = None,
 ) -> Request:
     """POST /v3/basic_kyc/sync. 200 carries the result; never retried."""
     return _basic_kyc_request(
@@ -229,7 +224,6 @@ def basic_kyc_sync(
         operator=operator,
         partner_params=partner_params,
         metadata=metadata,
-        user_id=user_id,
         ok_statuses=(200,),
     )
 
