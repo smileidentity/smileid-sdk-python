@@ -104,6 +104,12 @@ _OPERATIONS: Dict[str, Any] = {
         202,
         lambda c: c.aml.screen(**_AML, **_person(), user_id="user-1"),
     ),
+    "basic_kyc": (
+        "POST",
+        "/v3/basic_kyc",
+        202,
+        lambda c: c.basic_kyc.verify(**_KYC_ID, **_person(), user_id="user-1"),
+    ),
     "aml": (
         "POST",
         "/v3/aml/monitoring",
@@ -195,6 +201,18 @@ def test_aml_sync_token_binds_its_user_and_product(respx_mock: Any) -> None:
     assert _token_claims(token_route.calls.last.request) == {
         "user_id": "user-1",
         "product": "one_time_aml",
+    }
+
+
+def test_basic_kyc_sync_token_binds_its_user_and_product(respx_mock: Any) -> None:
+    token_route = _token_route(respx_mock)
+    respx_mock.post(f"{BASE_URL}/v3/basic_kyc/sync").mock(
+        return_value=httpx.Response(200, json={"status": "clear", "message": "ok"})
+    )
+    make_client().basic_kyc.verify_sync(**_KYC_ID, **_person(), user_id="user-1")
+    assert _token_claims(token_route.calls.last.request) == {
+        "user_id": "user-1",
+        "product": "basic_kyc",
     }
 
 

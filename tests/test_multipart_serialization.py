@@ -528,3 +528,124 @@ def test_aml_monitoring_news_omits_unset_paging(respx_mock: Any, mock_token: Any
     news = make_client().aml.monitoring_news("job1", "ref1", news_category="other")
     assert dict(route.calls.last.request.url.params) == {"news_category": "other"}
     assert news.news == []
+
+
+BASIC_KYC_KWARGS: dict = {
+    "country": "NG",
+    "id_type": "NIN",
+    "id_number": "12345678901",
+    "user_details": user_details_dict(),
+    "consent": consent_dict(),
+}
+
+BASIC_KYC_RESULT = {
+    "status": "attention",
+    "message": "Verification completed: partial match.",
+    "reason": None,
+    "created_at": "2026-03-10T12:00:00.000Z",
+    "completed_at": "2026-03-10T12:00:04.000Z",
+    "product": "basic_kyc",
+    "partner_params": {"order_id": "ORD-12345"},
+    "match_results": {
+        "overall": "partial_match",
+        "names": "partial_match",
+        "first_name": "exact_match",
+        "last_name": "transposed",
+        "other_names": "not_provided",
+        "date_of_birth": "no_match",
+        "gender": "exact_match",
+        "phone_number": "not_provided",
+        "secondary_id_number": "not_provided",
+    },
+    "user_provided_info": {
+        "given_names": "John",
+        "last_name": "Doe",
+        "email": "john@example.com",
+        "phone_number": None,
+        "id_number": "12345678901",
+    },
+    "consent": {},
+    "antifraud": None,
+    "device_signals": None,
+    "kyc_receipt": "https://portal.example/receipt",
+}
+
+
+def test_basic_kyc_multipart_shape(respx_mock: Any, mock_token: Any) -> None:
+    route = respx_mock.post(f"{BASE_URL}/v3/basic_kyc").mock(
+        return_value=httpx.Response(202, json=ACCEPTED_LOWER)
+    )
+    accepted = make_client().basic_kyc.verify(
+        **BASIC_KYC_KWARGS,
+        callback_url="https://example.com/callback",
+        bank_code="044",
+        operator="mtn",
+        partner_params={"order_id": "ORD-1"},
+        metadata=[{"name": "k", "value": "v"}],
+        user_id="user_01h8x9y2z3a4b5c6d7e8f9g0h1",
+    )
+    assert accepted.is_accepted
+
+    request = route.calls.last.request
+    by_name = {p["name"]: p for p in parse_multipart(request)}
+    assert list(by_name) == [
+        "country",
+        "id_type",
+        "id_number",
+        "callback_url",
+        "bank_code",
+        "operator",
+        "user_details",
+        "consent",
+        "partner_params",
+        "metadata",
+    ]
+    assert by_name["country"]["body"] == b"NG"
+    assert by_name["country"]["content_type"] is None
+    assert by_name["id_number"]["body"] == b"12345678901"
+    assert by_name["callback_url"]["body"] == b"https://example.com/callback"
+    assert by_name["bank_code"]["body"] == b"044"
+    assert by_name["operator"]["body"] == b"mtn"
+    assert by_name["user_details"]["content_type"] == "application/json"
+    assert json.loads(by_name["user_details"]["body"]) == user_details_dict()
+    assert json.loads(by_name["consent"]["body"]) == consent_dict()
+    assert json.loads(by_name["partner_params"]["body"]) == {"order_id": "ORD-1"}
+    assert json.loads(by_name["metadata"]["body"]) == [{"name": "k", "value": "v"}]
+    assert request.headers["User-ID"] == "user_01h8x9y2z3a4b5c6d7e8f9g0h1"
+    assert "SmileID-Partner-ID" not in request.headers
+    assert request.headers["SmileID-Token"]
+    assert request.headers["SmileID-Source-SDK"] == "python"
+
+
+def test_basic_kyc_sync_returns_result_and_is_never_retried(
+    respx_mock: Any, mock_token: Any
+) -> None:
+    route = respx_mock.post(f"{BASE_URL}/v3/basic_kyc/sync").mock(
+        return_value=httpx.Response(200, json=BASIC_KYC_RESULT)
+    )
+    result = make_client().basic_kyc.verify_sync(**BASIC_KYC_KWARGS)
+
+    assert result.status == "attention"
+    assert result.reason is None
+    assert result.product == "basic_kyc"
+    assert result.match_results is not None
+    assert result.match_results.overall == "partial_match"
+    assert result.match_results.last_name == "transposed"
+    assert result.match_results.secondary_id_number == "not_provided"
+    assert result.user_provided_info is not None
+    assert result.user_provided_info.id_number == "12345678901"
+    assert result.partner_params == {"order_id": "ORD-12345"}
+    assert result.kyc_receipt == "https://portal.example/receipt"
+
+    request = route.calls.last.request
+    by_name = {p["name"]: p for p in parse_multipart(request)}
+    assert by_name["id_type"]["body"] == b"NIN"
+    assert "callback_url" not in by_name
+    assert "User-ID" not in request.headers
+    assert "SmileID-Idempotency-Key" not in request.headers
+
+    failed = {"status": "Failed Dependency", "message": "x"}
+    route.mock(return_value=httpx.Response(424, json=failed))
+    with pytest.raises(usesmileid.errors.SmileIDError):
+        make_client().basic_kyc.verify_sync(**BASIC_KYC_KWARGS)
+    assert route.call_count == 2  # the 424 was not retried

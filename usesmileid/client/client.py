@@ -20,6 +20,7 @@ from usesmileid.generated.models import (
     AcceptedResponse,
     AmlMonitoringNewsResponse,
     BankCodesResponse,
+    BasicKycResult,
     IdStatusResponse,
     JobStatus,
     OneTimeAmlResult,
@@ -94,6 +95,79 @@ class EnhancedKycResource(_Resource):
         )
         response = self._transport.send(request, timeout=timeout)
         return AcceptedResponse.model_validate(parse_success_json(response))
+
+
+class BasicKycResource(_Resource):
+    """Basic KYC: match verdicts per submitted field."""
+
+    def verify(
+        self,
+        *,
+        country: str,
+        id_type: str,
+        id_number: str,
+        user_details: UserDetailsInput,
+        consent: ConsentInput,
+        callback_url: Optional[str] = None,
+        bank_code: Optional[str] = None,
+        operator: Optional[str] = None,
+        partner_params: Optional[dict] = None,
+        metadata: Optional[list] = None,
+        user_id: Optional[str] = None,
+        timeout: Optional[float] = None,
+    ) -> AcceptedResponse:
+        """POST /v3/basic_kyc. The result arrives on the callback URL."""
+        request = operations.basic_kyc(
+            country=country,
+            id_type=id_type,
+            id_number=id_number,
+            user_details=normalize_user_details(user_details),
+            consent=_consent_dict(consent),
+            callback_url=self._callback(callback_url),
+            bank_code=bank_code,
+            operator=operator,
+            partner_params=partner_params,
+            metadata=metadata,
+            user_id=user_id,
+        )
+        response = self._transport.send(request, timeout=timeout)
+        return AcceptedResponse.model_validate(parse_success_json(response))
+
+    def verify_sync(
+        self,
+        *,
+        country: str,
+        id_type: str,
+        id_number: str,
+        user_details: UserDetailsInput,
+        consent: ConsentInput,
+        callback_url: Optional[str] = None,
+        bank_code: Optional[str] = None,
+        operator: Optional[str] = None,
+        partner_params: Optional[dict] = None,
+        metadata: Optional[list] = None,
+        user_id: Optional[str] = None,
+        timeout: Optional[float] = None,
+    ) -> BasicKycResult:
+        """POST /v3/basic_kyc/sync. Returns the result inline; no callback is sent.
+
+        The request is not retried: a repeat would run and bill a second lookup.
+        """
+        request = operations.basic_kyc_sync(
+            country=country,
+            id_type=id_type,
+            id_number=id_number,
+            user_details=normalize_user_details(user_details),
+            consent=_consent_dict(consent),
+            callback_url=self._callback(callback_url),
+            bank_code=bank_code,
+            operator=operator,
+            partner_params=partner_params,
+            metadata=metadata,
+            user_id=user_id,
+        )
+        response = self._transport.send(request, timeout=timeout)
+        return BasicKycResult.model_validate(parse_success_json(response))
 
 
 class DocumentsResource(_Resource):
@@ -688,6 +762,7 @@ class Client:
         self._transport = Transport(self._config, http_client=http_client)
 
         self.enhanced_kyc = EnhancedKycResource(self)
+        self.basic_kyc = BasicKycResource(self)
         self.documents = DocumentsResource(self)
         self.biometric_kyc = BiometricKycResource(self)
         self.biometric = BiometricResource(self)
@@ -730,6 +805,7 @@ __all__: List[str] = [
     "Client",
     "DocumentsResource",
     "EnhancedKycResource",
+    "BasicKycResource",
     "ServicesResource",
     "UsersResource",
     "VerificationsResource",
