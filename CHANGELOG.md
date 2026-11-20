@@ -6,11 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Basic KYC: `basic_kyc.verify` (`POST /v3/basic_kyc`) and `basic_kyc.verify_sync` (`POST /v3/basic_kyc/sync`), which returns a `BasicKycResult`. Both mint a token with the `basic_kyc` product claim.
+
 ## [13.1.0] - 2026-11-19
 
 ### Added
 
-- Basic KYC: `basic_kyc.verify` (`POST /v3/basic_kyc`) and `basic_kyc.verify_sync` (`POST /v3/basic_kyc/sync`), which returns a `BasicKycResult`. Both mint a token with the `basic_kyc` product claim.
 - AML screening: `aml.screen` (`POST /v3/aml`) and `aml.screen_sync` (`POST /v3/aml/sync`), which returns a `OneTimeAmlResult` and accepts an `idempotency_key`.
 - AML Monitoring: `aml.monitor` (`POST /v3/aml/monitoring`) and `aml.monitoring_news` (`GET /v3/aml/monitoring/{job_id}/news/{reference}`).
 - The `OneTimeAmlResult` and `AmlMonitoringNewsResponse` response models.
