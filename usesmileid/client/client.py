@@ -14,13 +14,14 @@ import httpx
 
 from usesmileid.client.config import ClientConfig, validate_callback_url
 from usesmileid.client.transport import Transport
-from usesmileid.errors import ValidationError, _job_id_header, parse_success_json
+from usesmileid.errors import ValidationError, _header, _job_id_header, parse_success_json
 from usesmileid.generated import operations
 from usesmileid.generated.models import (
     AcceptedResponse,
     AmlMonitoringNewsResponse,
     BankCodesResponse,
     BasicKycResult,
+    EnhancedKycResult,
     IdStatusResponse,
     JobStatus,
     OneTimeAmlResult,
@@ -96,6 +97,70 @@ class EnhancedKycResource(_Resource):
         )
         response = self._transport.send(request, timeout=timeout)
         return AcceptedResponse.model_validate(parse_success_json(response))
+
+    def verify_sync(
+        self,
+        *,
+        country: str,
+        id_type: str,
+        id_number: str,
+        user_details: UserDetailsInput,
+        consent: ConsentInput,
+        callback_url: Optional[str] = None,
+        bank_code: Optional[str] = None,
+        operator: Optional[str] = None,
+        partner_params: Optional[dict] = None,
+        metadata: Optional[list] = None,
+        user_id: Optional[str] = None,
+        timeout: Optional[float] = None,
+    ) -> EnhancedKycResult:
+        """POST /v3/enhanced_kyc/sync. Returns the result inline.
+
+        The body is the payload the async job would have sent to the callback
+        URL. The sync endpoint ignores ``callback_url``, so the client's
+        default callback URL is never sent; a ``callback_url`` passed here is
+        sent as given. The request is not retried: a repeat would run and bill
+        a second lookup. After a 408 or 424 the job may still have run, so
+        don't resubmit it: read its outcome with
+        ``verifications.retrieve(err.job_id)``. The same applies to a 500 whose
+        error has a ``job_id``; a 500 without one means the job was not
+        created. The result's ``job_id`` and ``user_id`` come from the
+        ``SmileID-Job-ID`` and ``User-ID`` response headers, and it carries the
+        ``Response-Signature`` and ``Response-Timestamp`` headers for your own
+        webhook verification code to check.
+        """
+        request = operations.enhanced_kyc_sync(
+            country=country,
+            id_type=id_type,
+            id_number=id_number,
+            user_details=normalize_user_details(user_details),
+            consent=_consent_dict(consent),
+            callback_url=_explicit_callback(callback_url),
+            bank_code=bank_code,
+            operator=operator,
+            partner_params=partner_params,
+            metadata=metadata,
+            user_id=user_id,
+        )
+        response = self._transport.send(request, timeout=timeout)
+        return _enhanced_kyc_result(response)
+
+
+def _enhanced_kyc_result(response: httpx.Response) -> EnhancedKycResult:
+    """Parse an Enhanced KYC sync 200 body, filling in values from the headers.
+
+    ``job_id`` and ``user_id`` come from the ``SmileID-Job-ID`` and ``User-ID``
+    headers, falling back to the body. ``response_signature`` and
+    ``response_timestamp`` come only from their headers.
+    """
+    body = parse_success_json(response)
+    for field, header in (("job_id", "smileid-job-id"), ("user_id", "user-id")):
+        value = _header(response, header)
+        if value is not None:
+            body[field] = value
+    body["response_signature"] = _header(response, "response-signature")
+    body["response_timestamp"] = _header(response, "response-timestamp")
+    return EnhancedKycResult.model_validate(body)
 
 
 def _sync_result(model: Type[_SyncResult], response: httpx.Response) -> _SyncResult:
