@@ -227,8 +227,10 @@ class EnhancedKycResult(_WireModel):
     with ``reason`` saying why when it isn't ``clear``. The spec documents this
     payload with the Enhanced KYC callback, so only its common fields are typed.
     The ID authority's data and any other field are kept and can be read from
-    ``model_extra``. On the sync response, ``job_id`` is the ``SmileID-Job-ID``
-    response header.
+    ``model_extra``. On the sync response, ``job_id`` and ``user_id`` are the
+    ``SmileID-Job-ID`` and ``User-ID`` response headers when present, and
+    ``response_signature`` and ``response_timestamp`` are the
+    ``Response-Signature`` and ``Response-Timestamp`` headers, or ``None``.
     """
 
     model_config = ConfigDict(extra="allow", populate_by_name=True)
@@ -246,6 +248,8 @@ class EnhancedKycResult(_WireModel):
     kyc_receipt: Optional[str] = None
     user_id: Optional[str] = None
     job_id: Optional[str] = None
+    response_signature: Optional[str] = None
+    response_timestamp: Optional[str] = None
 
 
 class AmlMonitoringNewsItem(_WireModel):

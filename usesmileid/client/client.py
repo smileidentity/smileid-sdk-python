@@ -14,7 +14,7 @@ import httpx
 
 from usesmileid.client.config import ClientConfig, validate_callback_url
 from usesmileid.client.transport import Transport
-from usesmileid.errors import ValidationError, _job_id_header, parse_success_json
+from usesmileid.errors import ValidationError, _header, _job_id_header, parse_success_json
 from usesmileid.generated import operations
 from usesmileid.generated.models import (
     AcceptedResponse,
@@ -37,7 +37,7 @@ from usesmileid.helpers.polling import wait_until_complete
 from usesmileid.helpers.user_details import UserDetails, normalize_user_details
 
 ConsentInput = Union[Consent, dict]
-_SyncResult = TypeVar("_SyncResult", BasicKycResult, EnhancedKycResult, OneTimeAmlResult)
+_SyncResult = TypeVar("_SyncResult", BasicKycResult, OneTimeAmlResult)
 UserDetailsInput = Union[UserDetails, dict]
 
 
@@ -124,8 +124,10 @@ class EnhancedKycResource(_Resource):
         don't resubmit it: read its outcome with
         ``verifications.retrieve(err.job_id)``. The same applies to a 500 whose
         error has a ``job_id``; a 500 without one means the job was not
-        created. The result's ``job_id`` comes from the ``SmileID-Job-ID``
-        response header.
+        created. The result's ``job_id`` and ``user_id`` come from the
+        ``SmileID-Job-ID`` and ``User-ID`` response headers, and it carries the
+        ``Response-Signature`` and ``Response-Timestamp`` headers for your own
+        webhook verification code to check.
         """
         request = operations.enhanced_kyc_sync(
             country=country,
@@ -141,7 +143,24 @@ class EnhancedKycResource(_Resource):
             user_id=user_id,
         )
         response = self._transport.send(request, timeout=timeout)
-        return _sync_result(EnhancedKycResult, response)
+        return _enhanced_kyc_result(response)
+
+
+def _enhanced_kyc_result(response: httpx.Response) -> EnhancedKycResult:
+    """Parse an Enhanced KYC sync 200 body, filling in values from the headers.
+
+    ``job_id`` and ``user_id`` come from the ``SmileID-Job-ID`` and ``User-ID``
+    headers, falling back to the body. ``response_signature`` and
+    ``response_timestamp`` come only from their headers.
+    """
+    body = parse_success_json(response)
+    for field, header in (("job_id", "smileid-job-id"), ("user_id", "user-id")):
+        value = _header(response, header)
+        if value is not None:
+            body[field] = value
+    body["response_signature"] = _header(response, "response-signature")
+    body["response_timestamp"] = _header(response, "response-timestamp")
+    return EnhancedKycResult.model_validate(body)
 
 
 def _sync_result(model: Type[_SyncResult], response: httpx.Response) -> _SyncResult:
