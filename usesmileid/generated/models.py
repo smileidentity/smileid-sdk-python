@@ -170,6 +170,51 @@ class OneTimeAmlResult(_WireModel):
     device_signals: Optional[Dict[str, Any]] = None
 
 
+class BasicKycMatchResults(_WireModel):
+    """The verdict per submitted field: ``exact_match``, ``partial_match``,
+    ``transposed``, ``no_match`` or ``not_provided``."""
+
+    overall: Optional[str] = None
+    names: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    other_names: Optional[str] = None
+    date_of_birth: Optional[str] = None
+    gender: Optional[str] = None
+    phone_number: Optional[str] = None
+    secondary_id_number: Optional[str] = None
+
+
+class BasicKycUserProvidedInfo(_WireModel):
+    given_names: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+    phone_number: Optional[str] = None
+    id_number: Optional[str] = None
+
+
+class BasicKycResult(_WireModel):
+    """Basic KYC result: the 200 body of POST /v3/basic_kyc/sync and the async callback.
+
+    ``status`` is the outcome: ``clear``, ``attention``, ``block`` or ``error``.
+    ``match_results`` holds a verdict per field, never the authority's record.
+    """
+
+    status: str
+    message: str
+    reason: Optional[str] = None
+    created_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    product: Optional[str] = None
+    partner_params: Optional[Dict[str, Any]] = None
+    match_results: Optional[BasicKycMatchResults] = None
+    user_provided_info: Optional[BasicKycUserProvidedInfo] = None
+    consent: Optional[Dict[str, Any]] = None
+    antifraud: Optional[Dict[str, Any]] = None
+    device_signals: Optional[Dict[str, Any]] = None
+    kyc_receipt: Optional[str] = None
+
+
 class AmlMonitoringNewsItem(_WireModel):
     body: str
     published_date: str

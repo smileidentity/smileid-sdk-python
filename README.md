@@ -128,6 +128,36 @@ accepted = smile.documents.verify(
 )
 ```
 
+### Basic KYC
+
+Check the details you submit against the ID authority's record. The result gives a match verdict per field and never returns the record itself.
+
+```python
+# Result arrives on the callback URL.
+accepted = smile.basic_kyc.verify(
+    country="NG",
+    id_type="NIN",
+    id_number="12345678901",
+    user_details=user_details,
+    consent=consent,
+)
+
+# Result is returned in the response.
+result = smile.basic_kyc.verify_sync(
+    country="NG",
+    id_type="NIN",
+    id_number="12345678901",
+    user_details=user_details,
+    consent=consent,
+)
+if result.match_results is not None:
+    print(result.status, result.match_results.overall)
+else:
+    print(result.status, result.message)
+```
+
+`verify_sync` is never retried, because a repeat would run and bill a second lookup. If it fails with a 408, 424 or 500, the job may still have run, so don't resubmit it automatically. The sync endpoint ignores `callback_url`, so the client's `default_callback_url` isn't sent.
+
 ### Enhanced document verification
 
 Same as document verification, but `id_type` is required and the ID information is also checked against the issuing authority.
