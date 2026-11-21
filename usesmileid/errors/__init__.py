@@ -127,7 +127,12 @@ def _job_id_header(response: "httpx.Response") -> Optional[str]:
     A missing, empty or whitespace-only header counts as absent. httpx header
     lookup is case-insensitive, so any casing the API sends is found.
     """
-    value = (response.headers.get("smileid-job-id") or "").strip()
+    return _header(response, "smileid-job-id")
+
+
+def _header(response: "httpx.Response", name: str) -> Optional[str]:
+    """Return response header ``name``, stripped, or ``None`` when missing or blank."""
+    value = (response.headers.get(name) or "").strip()
     return value or None
 
 

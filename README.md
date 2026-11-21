@@ -123,7 +123,9 @@ result = smile.enhanced_kyc.verify_sync(
 print(result.status, result.reason, result.message)
 ```
 
-`verify_sync` returns an `EnhancedKycResult`, which holds the same payload the async job would have sent to your callback URL. `result.job_id` is the job's ID, from the `SmileID-Job-ID` response header. The ID authority's data and any other field the SDK doesn't type are in `result.model_extra`.
+`verify_sync` returns an `EnhancedKycResult`, which holds the same payload the async job would have sent to your callback URL. `result.job_id` is the job's ID, from the `SmileID-Job-ID` response header. `result.user_id` comes from the `User-ID` response header, or from the body when the header is absent. The ID authority's data and any other field the SDK doesn't type are in `result.model_extra`.
+
+`result.response_signature` and `result.response_timestamp` are the `Response-Signature` and `Response-Timestamp` response headers, or `None` when absent. They are the same headers a webhook carries, so you can check them with your own webhook verification code. The SDK doesn't verify them.
 
 `verify_sync` is never retried, because a repeat would run and bill a second lookup. The sync endpoint ignores `callback_url`, so the client's `default_callback_url` isn't sent.
 

@@ -897,19 +897,23 @@ def test_enhanced_kyc_sync_parses_the_result(respx_mock: Any, mock_token: Any) -
         return_value=httpx.Response(
             200,
             json=ENHANCED_KYC_RESULT,
+            # Lower-case names: header lookup is case-insensitive.
             headers={
-                "SmileID-Job-ID": "job_01h8x9y2z3a4b5c6d7e8f9g0h1",
-                "Response-Signature": "c2lnbmF0dXJl",
-                "Response-Timestamp": "2026-03-10T12:00:04.000Z",
+                "smileid-job-id": "job_01h8x9y2z3a4b5c6d7e8f9g0h1",
+                "user-id": "user_from_header",
+                "response-signature": "c2lnbmF0dXJl",
+                "response-timestamp": "2026-03-10T12:00:04.000Z",
             },
         )
     )
     result = make_client().enhanced_kyc.verify_sync(**BASIC_KYC_KWARGS)
 
     assert isinstance(result, usesmileid.EnhancedKycResult)
-    # The header wins over the body's job_id.
+    # The headers win over the body's job_id and user_id.
     assert result.job_id == "job_01h8x9y2z3a4b5c6d7e8f9g0h1"
-    assert result.user_id == "user_01h8x9y2z3a4b5c6d7e8f9g0h1"
+    assert result.user_id == "user_from_header"
+    assert result.response_signature == "c2lnbmF0dXJl"
+    assert result.response_timestamp == "2026-03-10T12:00:04.000Z"
     assert result.status == "attention"
     assert result.reason == "medium_risk"
     assert result.message == "Verification successful"
@@ -925,24 +929,46 @@ def test_enhanced_kyc_sync_parses_the_result(respx_mock: Any, mock_token: Any) -
     assert result.model_extra == {"id_info": {"full_name": "Yusuf Bala Amberford"}}
 
 
-def test_enhanced_kyc_sync_job_id_falls_back_to_the_body(
-    respx_mock: Any, mock_token: Any
+@pytest.mark.parametrize("blank", [None, "   "], ids=["absent", "blank"])
+def test_enhanced_kyc_sync_ids_fall_back_to_the_body(
+    respx_mock: Any, mock_token: Any, blank: Any
 ) -> None:
     body = {
         "status": "block",
         "reason": "identifier_not_found",
         "message": "Verification failed: Unable to validate ID - Not Found",
         "job_id": "job_from_body",
+        "user_id": "user_from_body",
+        # A body field can't stand in for the signature headers.
+        "response_signature": "from_body",
     }
+    names = ("SmileID-Job-ID", "User-ID", "Response-Signature", "Response-Timestamp")
+    headers = {} if blank is None else {name: blank for name in names}
     respx_mock.post(f"{BASE_URL}/v3/enhanced_kyc/sync").mock(
-        return_value=httpx.Response(200, json=body)
+        return_value=httpx.Response(200, json=body, headers=headers)
     )
     result = make_client().enhanced_kyc.verify_sync(**BASIC_KYC_KWARGS)
     assert result.job_id == "job_from_body"
+    assert result.user_id == "user_from_body"
+    assert result.response_signature is None
+    assert result.response_timestamp is None
     assert result.status == "block"
     assert result.reason == "identifier_not_found"
     assert result.kyc_receipt is None
     assert result.model_extra == {}
+
+
+def test_enhanced_kyc_sync_ids_are_none_without_header_or_body(
+    respx_mock: Any, mock_token: Any
+) -> None:
+    respx_mock.post(f"{BASE_URL}/v3/enhanced_kyc/sync").mock(
+        return_value=httpx.Response(200, json={"status": "clear", "message": "Verified"})
+    )
+    result = make_client().enhanced_kyc.verify_sync(**BASIC_KYC_KWARGS)
+    assert result.job_id is None
+    assert result.user_id is None
+    assert result.response_signature is None
+    assert result.response_timestamp is None
 
 
 def test_enhanced_kyc_sync_408_reads_the_outcome_from_the_status_endpoint(
