@@ -122,12 +122,13 @@ def _request_id(response: "httpx.Response") -> Optional[str]:
 
 
 def _job_id_header(response: "httpx.Response") -> Optional[str]:
-    """Return the ``SmileID-Job-ID`` response header, or ``None`` when absent.
+    """Return the ``SmileID-Job-ID`` response header, stripped, or ``None``.
 
-    httpx header lookup is case-insensitive, so any casing the API sends is
-    found.
+    A missing, empty or whitespace-only header counts as absent. httpx header
+    lookup is case-insensitive, so any casing the API sends is found.
     """
-    return response.headers.get("smileid-job-id") or None
+    value = (response.headers.get("smileid-job-id") or "").strip()
+    return value or None
 
 
 def parse_success_json(response: "httpx.Response") -> "dict[str, Any]":

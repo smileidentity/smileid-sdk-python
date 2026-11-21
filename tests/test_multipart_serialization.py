@@ -740,6 +740,15 @@ def test_sync_result_job_id_prefers_the_header_over_the_body(
     )
     assert make_client().basic_kyc.verify_sync(**BASIC_KYC_KWARGS).job_id == "job_from_header"
 
+    route.mock(
+        return_value=httpx.Response(
+            200,
+            json={**BASIC_KYC_RESULT, "job_id": "job_from_body"},
+            headers={"SmileID-Job-ID": "   "},
+        )
+    )
+    assert make_client().basic_kyc.verify_sync(**BASIC_KYC_KWARGS).job_id == "job_from_body"
+
 
 def test_basic_kyc_sync_parses_a_null_match_results(respx_mock: Any, mock_token: Any) -> None:
     body = {**BASIC_KYC_RESULT, "status": "error", "match_results": None, "kyc_receipt": None}

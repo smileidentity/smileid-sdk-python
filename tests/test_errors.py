@@ -63,6 +63,20 @@ def test_408_carries_the_job_id_header(
     assert err.job_id == "job_01h8x9y2z3a4b5c6d7e8f9g0h1"
 
 
+@pytest.mark.parametrize(("value", "expected"), [("  job_1  ", "job_1"), ("   ", None), ("", None)])
+def test_job_id_header_is_stripped_and_blank_counts_as_absent(
+    respx_mock: Any, mock_token: Any, value: str, expected: Any
+) -> None:
+    respx_mock.post(f"{BASE_URL}/v3/enhanced_kyc").mock(
+        return_value=httpx.Response(
+            408, json={"message": "timeout"}, headers={"SmileID-Job-ID": value}
+        )
+    )
+    with pytest.raises(usesmileid.errors.SmileIDError) as excinfo:
+        _verify(make_client())
+    assert excinfo.value.job_id == expected
+
+
 def test_error_without_job_id_header_has_none(respx_mock: Any, mock_token: Any) -> None:
     respx_mock.post(f"{BASE_URL}/v3/enhanced_kyc").mock(
         return_value=httpx.Response(500, json={"message": "Internal server error"})

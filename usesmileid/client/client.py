@@ -103,11 +103,11 @@ def _sync_result(model: Type[_SyncResult], response: httpx.Response) -> _SyncRes
 
     The header wins; a ``job_id`` in the body is kept only when it is absent.
     """
-    result = model.model_validate(parse_success_json(response))
+    body = parse_success_json(response)
     header = _job_id_header(response)
     if header is not None:
-        result.job_id = header
-    return result
+        body["job_id"] = header
+    return model.model_validate(body)
 
 
 def _explicit_callback(callback_url: Optional[str]) -> Optional[str]:
