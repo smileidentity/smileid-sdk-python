@@ -668,16 +668,17 @@ def test_basic_kyc_sync_returns_result_and_is_never_retried(
     assert "SmileID-Idempotency-Key" not in request.headers
 
 
+@pytest.mark.parametrize("product", ["basic_kyc", "enhanced_kyc"])
 @pytest.mark.parametrize("status_code", [408, 424, 500])
-def test_basic_kyc_sync_is_never_retried(
-    respx_mock: Any, mock_token: Any, status_code: int
+def test_kyc_sync_is_never_retried(
+    respx_mock: Any, mock_token: Any, status_code: int, product: str
 ) -> None:
     # 408 and 500 are retried for idempotent requests, so one attempt proves the sync call isn't.
-    route = respx_mock.post(f"{BASE_URL}/v3/basic_kyc/sync").mock(
+    route = respx_mock.post(f"{BASE_URL}/v3/{product}/sync").mock(
         return_value=httpx.Response(status_code, json={"status": "Error", "message": "x"})
     )
     with pytest.raises(usesmileid.errors.SmileIDError) as raised:
-        make_client().basic_kyc.verify_sync(**BASIC_KYC_KWARGS)
+        getattr(make_client(), product).verify_sync(**BASIC_KYC_KWARGS)
     assert raised.value.status_code == status_code
     assert raised.value.job_id is None
     assert route.call_count == 1
@@ -795,4 +796,202 @@ def test_basic_kyc_rejects_invalid_input_before_sending(
     call = resource.verify_sync if sync else resource.verify
     with pytest.raises(usesmileid.errors.ValidationError):
         call(**{**BASIC_KYC_KWARGS, **change})
+    assert route.call_count == 0
+
+
+# A realistic Enhanced KYC sync 200: the Amberford persona's outcome in the
+# fixtures case file (submitEnhancedKycSync/amberford), with the envelope
+# fields the async callback carries.
+ENHANCED_KYC_RESULT = {
+    "job_id": "job_from_body",
+    "user_id": "user_01h8x9y2z3a4b5c6d7e8f9g0h1",
+    "status": "attention",
+    "reason": "medium_risk",
+    "message": "Verification successful",
+    "created_at": "2026-03-10T12:00:00.000Z",
+    "completed_at": "2026-03-10T12:00:04.000Z",
+    "product": "enhanced_kyc",
+    "partner_params": {"order_id": "ORD-12345"},
+    "consent": {},
+    "antifraud": None,
+    "device_signals": None,
+    "kyc_receipt": "https://portal.usesmileid.com/api/v3/001/job_result_summary/job_01h8x9y2z3a4b5c6d7e8f9g0h1/generate_v3_pdf/live?token=REDACTED",
+    "id_info": {"full_name": "Yusuf Bala Amberford"},
+}
+
+
+def test_enhanced_kyc_sync_golden_request(respx_mock: Any, mock_token: Any) -> None:
+    route = respx_mock.post(f"{BASE_URL}/v3/enhanced_kyc/sync").mock(
+        return_value=httpx.Response(200, json=ENHANCED_KYC_RESULT)
+    )
+    make_client(default_callback_url="https://example.com/default").enhanced_kyc.verify_sync(
+        **BASIC_KYC_KWARGS,
+        bank_code="044",
+        operator="mtn",
+        partner_params={"order_id": "ORD-1"},
+        metadata=[{"name": "k", "value": "v"}],
+        user_id="user_01h8x9y2z3a4b5c6d7e8f9g0h1",
+    )
+
+    assert route.call_count == 1
+    request = route.calls.last.request
+    assert request.method == "POST"
+    assert request.url == f"{BASE_URL}/v3/enhanced_kyc/sync"
+    assert request.headers["Content-Type"].startswith("multipart/form-data; boundary=")
+    parts = parse_multipart(request)
+    by_name = {p["name"]: p for p in parts}
+    assert len(parts) == len(by_name), "a multipart part name appears twice"
+    # The default callback URL is never sent: the sync endpoint ignores it.
+    assert list(by_name) == [
+        "country",
+        "id_type",
+        "id_number",
+        "bank_code",
+        "operator",
+        "user_details",
+        "consent",
+        "partner_params",
+        "metadata",
+    ]
+    for name in ("country", "id_type", "id_number", "bank_code", "operator"):
+        assert by_name[name]["content_type"] is None
+        assert by_name[name]["filename"] is None
+    assert by_name["country"]["body"] == b"NG"
+    assert by_name["id_type"]["body"] == b"NIN"
+    assert by_name["id_number"]["body"] == b"12345678901"
+    assert by_name["bank_code"]["body"] == b"044"
+    assert by_name["operator"]["body"] == b"mtn"
+    for name in ("user_details", "consent", "partner_params", "metadata"):
+        assert by_name[name]["content_type"] == "application/json"
+        assert by_name[name]["filename"] is None
+    assert json.loads(by_name["user_details"]["body"]) == user_details_dict()
+    assert json.loads(by_name["consent"]["body"]) == consent_dict()
+    assert json.loads(by_name["partner_params"]["body"]) == {"order_id": "ORD-1"}
+    assert json.loads(by_name["metadata"]["body"]) == [{"name": "k", "value": "v"}]
+
+    # user_id goes in the User-ID header, as on the async call; no Partner-ID.
+    assert request.headers["User-ID"] == "user_01h8x9y2z3a4b5c6d7e8f9g0h1"
+    assert "SmileID-Partner-ID" not in request.headers
+    assert "SmileID-Idempotency-Key" not in request.headers
+    assert request.headers["SmileID-Token"]
+    assert request.headers["SmileID-Source-SDK"] == "python"
+    assert request.headers["SmileID-Source-SDK-Version"] == usesmileid.__version__
+    assert request.headers["User-Agent"].startswith(f"smileid-sdk-python/{usesmileid.__version__}")
+
+
+def test_enhanced_kyc_sync_sends_a_given_callback_url(respx_mock: Any, mock_token: Any) -> None:
+    route = respx_mock.post(f"{BASE_URL}/v3/enhanced_kyc/sync").mock(
+        return_value=httpx.Response(200, json=ENHANCED_KYC_RESULT)
+    )
+    make_client().enhanced_kyc.verify_sync(
+        **BASIC_KYC_KWARGS, callback_url="https://example.com/given"
+    )
+    request = route.calls.last.request
+    parts = {p["name"]: p for p in parse_multipart(request)}
+    assert parts["callback_url"]["body"] == b"https://example.com/given"
+    assert "User-ID" not in request.headers
+
+
+def test_enhanced_kyc_sync_parses_the_result(respx_mock: Any, mock_token: Any) -> None:
+    respx_mock.post(f"{BASE_URL}/v3/enhanced_kyc/sync").mock(
+        return_value=httpx.Response(
+            200,
+            json=ENHANCED_KYC_RESULT,
+            headers={
+                "SmileID-Job-ID": "job_01h8x9y2z3a4b5c6d7e8f9g0h1",
+                "Response-Signature": "c2lnbmF0dXJl",
+                "Response-Timestamp": "2026-03-10T12:00:04.000Z",
+            },
+        )
+    )
+    result = make_client().enhanced_kyc.verify_sync(**BASIC_KYC_KWARGS)
+
+    assert isinstance(result, usesmileid.EnhancedKycResult)
+    # The header wins over the body's job_id.
+    assert result.job_id == "job_01h8x9y2z3a4b5c6d7e8f9g0h1"
+    assert result.user_id == "user_01h8x9y2z3a4b5c6d7e8f9g0h1"
+    assert result.status == "attention"
+    assert result.reason == "medium_risk"
+    assert result.message == "Verification successful"
+    assert result.product == "enhanced_kyc"
+    assert result.created_at == "2026-03-10T12:00:00.000Z"
+    assert result.completed_at == "2026-03-10T12:00:04.000Z"
+    assert result.partner_params == {"order_id": "ORD-12345"}
+    assert result.consent == {}
+    assert result.antifraud is None
+    assert result.kyc_receipt is not None
+    assert result.kyc_receipt.startswith("https://portal.usesmileid.com/")
+    # Fields the SDK doesn't type are kept, not dropped.
+    assert result.model_extra == {"id_info": {"full_name": "Yusuf Bala Amberford"}}
+
+
+def test_enhanced_kyc_sync_job_id_falls_back_to_the_body(
+    respx_mock: Any, mock_token: Any
+) -> None:
+    body = {
+        "status": "block",
+        "reason": "identifier_not_found",
+        "message": "Verification failed: Unable to validate ID - Not Found",
+        "job_id": "job_from_body",
+    }
+    respx_mock.post(f"{BASE_URL}/v3/enhanced_kyc/sync").mock(
+        return_value=httpx.Response(200, json=body)
+    )
+    result = make_client().enhanced_kyc.verify_sync(**BASIC_KYC_KWARGS)
+    assert result.job_id == "job_from_body"
+    assert result.status == "block"
+    assert result.reason == "identifier_not_found"
+    assert result.kyc_receipt is None
+    assert result.model_extra == {}
+
+
+def test_enhanced_kyc_sync_408_reads_the_outcome_from_the_status_endpoint(
+    respx_mock: Any, mock_token: Any
+) -> None:
+    """Follows the README: after a 408, read the job's status rather than resubmit."""
+    job_id = "job_01h8x9y2z3a4b5c6d7e8f9g0h1"
+    sync_route = respx_mock.post(f"{BASE_URL}/v3/enhanced_kyc/sync").mock(
+        return_value=httpx.Response(
+            408,
+            json={"status": "Request Timeout", "message": "The ID authority timed out."},
+            headers={"SmileID-Job-ID": job_id},
+        )
+    )
+    status_route = respx_mock.get(f"{BASE_URL}/v3/status/{job_id}").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "status": "clear",
+                "job_id": job_id,
+                "user_id": "user_01h8x9y2z3a4b5c6d7e8f9g0h1",
+                "message": "Verification successful",
+            },
+        )
+    )
+    client = make_client()
+    with pytest.raises(usesmileid.errors.SmileIDError) as raised:
+        client.enhanced_kyc.verify_sync(**BASIC_KYC_KWARGS)
+    err = raised.value
+    assert err.status_code == 408
+    assert err.job_id == job_id
+
+    status = client.verifications.retrieve(err.job_id)
+
+    assert sync_route.call_count == 1
+    assert status_route.call_count == 1
+    assert status_route.calls.last.request.method == "GET"
+    assert status_route.calls.last.request.url.path == f"/v3/status/{job_id}"
+    assert status.status == "clear"
+    assert status.job_id == job_id
+    assert status.is_complete
+
+
+def test_enhanced_kyc_sync_rejects_invalid_input_before_sending(
+    respx_mock: Any, mock_token: Any
+) -> None:
+    route = respx_mock.post(f"{BASE_URL}/v3/enhanced_kyc/sync")
+    with pytest.raises(usesmileid.errors.ValidationError):
+        make_client().enhanced_kyc.verify_sync(
+            **BASIC_KYC_KWARGS, callback_url="http://example.com/callback"
+        )
     assert route.call_count == 0

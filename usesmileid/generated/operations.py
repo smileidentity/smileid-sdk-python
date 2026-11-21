@@ -94,6 +94,45 @@ def token(
     return req
 
 
+def _enhanced_kyc_request(
+    path: str,
+    *,
+    country: str,
+    id_type: str,
+    id_number: str,
+    user_details: dict,
+    consent: dict,
+    callback_url: Optional[str],
+    bank_code: Optional[str],
+    operator: Optional[str],
+    partner_params: Optional[dict],
+    metadata: Optional[list],
+    user_id: Optional[str],
+    ok_statuses: Tuple[int, ...],
+) -> Request:
+    req = Request(
+        method="POST",
+        path=path,
+        token_product="enhanced_kyc",
+        authenticated=True,
+        idempotent=False,
+        user_id_header=user_id,
+        body_kind="multipart",
+        ok_statuses=ok_statuses,
+    )
+    _add_scalar(req, "country", country)
+    _add_scalar(req, "id_type", id_type)
+    _add_scalar(req, "id_number", id_number)
+    _add_scalar(req, "callback_url", callback_url)
+    _add_scalar(req, "bank_code", bank_code)
+    _add_scalar(req, "operator", operator)
+    _add_json(req, "user_details", user_details)
+    _add_json(req, "consent", consent)
+    _add_json(req, "partner_params", partner_params)
+    _add_json(req, "metadata", metadata)
+    return req
+
+
 def enhanced_kyc(
     *,
     country: str,
@@ -109,26 +148,53 @@ def enhanced_kyc(
     user_id: Optional[str] = None,
 ) -> Request:
     """POST /v3/enhanced_kyc. No Partner-ID header; user_id in header."""
-    req = Request(
-        method="POST",
-        path="/v3/enhanced_kyc",
-        token_product="enhanced_kyc",
-        authenticated=True,
-        idempotent=False,
-        user_id_header=user_id,
-        body_kind="multipart",
+    return _enhanced_kyc_request(
+        "/v3/enhanced_kyc",
+        country=country,
+        id_type=id_type,
+        id_number=id_number,
+        user_details=user_details,
+        consent=consent,
+        callback_url=callback_url,
+        bank_code=bank_code,
+        operator=operator,
+        partner_params=partner_params,
+        metadata=metadata,
+        user_id=user_id,
+        ok_statuses=(200, 202),
     )
-    _add_scalar(req, "country", country)
-    _add_scalar(req, "id_type", id_type)
-    _add_scalar(req, "id_number", id_number)
-    _add_scalar(req, "callback_url", callback_url)
-    _add_scalar(req, "bank_code", bank_code)
-    _add_scalar(req, "operator", operator)
-    _add_json(req, "user_details", user_details)
-    _add_json(req, "consent", consent)
-    _add_json(req, "partner_params", partner_params)
-    _add_json(req, "metadata", metadata)
-    return req
+
+
+def enhanced_kyc_sync(
+    *,
+    country: str,
+    id_type: str,
+    id_number: str,
+    user_details: dict,
+    consent: dict,
+    callback_url: Optional[str] = None,
+    bank_code: Optional[str] = None,
+    operator: Optional[str] = None,
+    partner_params: Optional[dict] = None,
+    metadata: Optional[list] = None,
+    user_id: Optional[str] = None,
+) -> Request:
+    """POST /v3/enhanced_kyc/sync. 200 carries the result; never retried."""
+    return _enhanced_kyc_request(
+        "/v3/enhanced_kyc/sync",
+        country=country,
+        id_type=id_type,
+        id_number=id_number,
+        user_details=user_details,
+        consent=consent,
+        callback_url=callback_url,
+        bank_code=bank_code,
+        operator=operator,
+        partner_params=partner_params,
+        metadata=metadata,
+        user_id=user_id,
+        ok_statuses=(200,),
+    )
 
 
 def _basic_kyc_request(

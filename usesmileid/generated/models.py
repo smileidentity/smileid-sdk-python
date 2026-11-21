@@ -1,7 +1,8 @@
 """Wire response models. Field names are verbatim snake_case.
 
 All models ignore unknown fields so that additive backend changes never break
-deserialization.
+deserialization. ``EnhancedKycResult`` keeps them instead, because the spec
+leaves most of its fields untyped.
 """
 
 from __future__ import annotations
@@ -216,6 +217,34 @@ class BasicKycResult(_WireModel):
     antifraud: Optional[Dict[str, Any]] = None
     device_signals: Optional[Dict[str, Any]] = None
     kyc_receipt: Optional[str] = None
+    job_id: Optional[str] = None
+
+
+class EnhancedKycResult(_WireModel):
+    """Enhanced KYC result: the 200 body of POST /v3/enhanced_kyc/sync and the async callback.
+
+    ``status`` is the outcome: ``clear``, ``attention``, ``block`` or ``error``,
+    with ``reason`` saying why when it isn't ``clear``. The spec documents this
+    payload with the Enhanced KYC callback, so only its common fields are typed.
+    The ID authority's data and any other field are kept and can be read from
+    ``model_extra``. On the sync response, ``job_id`` is the ``SmileID-Job-ID``
+    response header.
+    """
+
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+    status: str
+    message: str
+    reason: Optional[str] = None
+    created_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    product: Optional[str] = None
+    partner_params: Optional[Dict[str, Any]] = None
+    consent: Optional[Dict[str, Any]] = None
+    antifraud: Optional[Dict[str, Any]] = None
+    device_signals: Optional[Dict[str, Any]] = None
+    kyc_receipt: Optional[str] = None
+    user_id: Optional[str] = None
     job_id: Optional[str] = None
 
 

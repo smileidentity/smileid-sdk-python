@@ -21,6 +21,7 @@ from usesmileid.generated.models import (
     AmlMonitoringNewsResponse,
     BankCodesResponse,
     BasicKycResult,
+    EnhancedKycResult,
     IdStatusResponse,
     JobStatus,
     OneTimeAmlResult,
@@ -36,7 +37,7 @@ from usesmileid.helpers.polling import wait_until_complete
 from usesmileid.helpers.user_details import UserDetails, normalize_user_details
 
 ConsentInput = Union[Consent, dict]
-_SyncResult = TypeVar("_SyncResult", BasicKycResult, OneTimeAmlResult)
+_SyncResult = TypeVar("_SyncResult", BasicKycResult, EnhancedKycResult, OneTimeAmlResult)
 UserDetailsInput = Union[UserDetails, dict]
 
 
@@ -96,6 +97,51 @@ class EnhancedKycResource(_Resource):
         )
         response = self._transport.send(request, timeout=timeout)
         return AcceptedResponse.model_validate(parse_success_json(response))
+
+    def verify_sync(
+        self,
+        *,
+        country: str,
+        id_type: str,
+        id_number: str,
+        user_details: UserDetailsInput,
+        consent: ConsentInput,
+        callback_url: Optional[str] = None,
+        bank_code: Optional[str] = None,
+        operator: Optional[str] = None,
+        partner_params: Optional[dict] = None,
+        metadata: Optional[list] = None,
+        user_id: Optional[str] = None,
+        timeout: Optional[float] = None,
+    ) -> EnhancedKycResult:
+        """POST /v3/enhanced_kyc/sync. Returns the result inline.
+
+        The body is the payload the async job would have sent to the callback
+        URL. The sync endpoint ignores ``callback_url``, so the client's
+        default callback URL is never sent; a ``callback_url`` passed here is
+        sent as given. The request is not retried: a repeat would run and bill
+        a second lookup. After a 408 or 424 the job may still have run, so
+        don't resubmit it: read its outcome with
+        ``verifications.retrieve(err.job_id)``. The same applies to a 500 whose
+        error has a ``job_id``; a 500 without one means the job was not
+        created. The result's ``job_id`` comes from the ``SmileID-Job-ID``
+        response header.
+        """
+        request = operations.enhanced_kyc_sync(
+            country=country,
+            id_type=id_type,
+            id_number=id_number,
+            user_details=normalize_user_details(user_details),
+            consent=_consent_dict(consent),
+            callback_url=_explicit_callback(callback_url),
+            bank_code=bank_code,
+            operator=operator,
+            partner_params=partner_params,
+            metadata=metadata,
+            user_id=user_id,
+        )
+        response = self._transport.send(request, timeout=timeout)
+        return _sync_result(EnhancedKycResult, response)
 
 
 def _sync_result(model: Type[_SyncResult], response: httpx.Response) -> _SyncResult:

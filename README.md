@@ -102,6 +102,7 @@ The examples below assume `smile`, `consent` and `user_details` are defined as a
 Verify an ID number against the issuing authority.
 
 ```python
+# Result arrives on the callback URL.
 accepted = smile.enhanced_kyc.verify(
     country="NG",
     id_type="NIN",
@@ -110,7 +111,37 @@ accepted = smile.enhanced_kyc.verify(
     consent=consent,
 )
 print(accepted.job_id, accepted.is_accepted)
+
+# Result is returned in the response.
+result = smile.enhanced_kyc.verify_sync(
+    country="NG",
+    id_type="NIN",
+    id_number="12345678901",
+    user_details=user_details,
+    consent=consent,
+)
+print(result.status, result.reason, result.message)
 ```
+
+`verify_sync` returns an `EnhancedKycResult`, which holds the same payload the async job would have sent to your callback URL. `result.job_id` is the job's ID, from the `SmileID-Job-ID` response header. The ID authority's data and any other field the SDK doesn't type are in `result.model_extra`.
+
+`verify_sync` is never retried, because a repeat would run and bill a second lookup. The sync endpoint ignores `callback_url`, so the client's `default_callback_url` isn't sent.
+
+If `verify_sync` fails with a 408 or 424, the job may still have run, so don't resubmit it: a resubmission bills a second lookup. Read the outcome with the job ID from the error instead:
+
+```python
+import usesmileid.errors
+
+try:
+    result = smile.enhanced_kyc.verify_sync(...)
+except usesmileid.errors.SmileIDError as err:
+    if err.status_code in (408, 424, 500) and err.job_id is not None:
+        status = smile.verifications.retrieve(err.job_id)
+    else:
+        raise
+```
+
+Do the same for a 500 that has a `job_id`. A 500 with no `job_id` means the job wasn't created.
 
 ### Document verification
 
