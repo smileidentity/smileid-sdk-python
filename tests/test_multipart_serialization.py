@@ -414,11 +414,12 @@ def test_one_time_aml_sync_returns_result_and_sends_idempotency_key(
     respx_mock: Any, mock_token: Any
 ) -> None:
     route = respx_mock.post(f"{BASE_URL}/v3/aml/sync").mock(
-        return_value=httpx.Response(200, json=AML_RESULT)
+        return_value=httpx.Response(200, json=AML_RESULT, headers={"SmileID-Job-ID": "job_aml"})
     )
     result = make_client().aml.screen_sync(**AML_KWARGS, idempotency_key="kuda-onboarding-8f14e45f")
 
     assert result.status == "block"
+    assert result.job_id == "job_aml"
     assert result.reason == "aml_match_found"
     assert result.no_of_persons_found == 1
     assert result.people[0]["name"] == "Gbenga Afolabi"
@@ -450,6 +451,22 @@ def test_one_time_aml_sync_retries_only_with_idempotency_key(
     route.mock(return_value=httpx.Response(503, json={"message": "later"}))
     with pytest.raises(usesmileid.errors.SmileIDError):
         make_client().aml.screen_sync(**AML_KWARGS)
+    assert route.call_count == 1
+
+
+@pytest.mark.parametrize("status_code", [408, 500])
+def test_one_time_aml_sync_without_key_is_not_retried_and_carries_job_id(
+    respx_mock: Any, mock_token: Any, status_code: int
+) -> None:
+    route = respx_mock.post(f"{BASE_URL}/v3/aml/sync").mock(
+        return_value=httpx.Response(
+            status_code, json={"message": "x"}, headers={"SmileID-Job-ID": "job_aml"}
+        )
+    )
+    with pytest.raises(usesmileid.errors.SmileIDError) as raised:
+        make_client().aml.screen_sync(**AML_KWARGS)
+    assert raised.value.status_code == status_code
+    assert raised.value.job_id == "job_aml"
     assert route.call_count == 1
 
 
@@ -622,11 +639,14 @@ def test_basic_kyc_sync_returns_result_and_is_never_retried(
     respx_mock: Any, mock_token: Any
 ) -> None:
     route = respx_mock.post(f"{BASE_URL}/v3/basic_kyc/sync").mock(
-        return_value=httpx.Response(200, json=BASIC_KYC_RESULT)
+        return_value=httpx.Response(
+            200, json=BASIC_KYC_RESULT, headers={"SmileID-Job-ID": "job_basic"}
+        )
     )
     result = make_client().basic_kyc.verify_sync(**BASIC_KYC_KWARGS)
 
     assert result.status == "attention"
+    assert result.job_id == "job_basic"
     assert result.reason is None
     assert result.product == "basic_kyc"
     assert result.match_results is not None
@@ -648,15 +668,77 @@ def test_basic_kyc_sync_returns_result_and_is_never_retried(
     assert "SmileID-Idempotency-Key" not in request.headers
 
 
-def test_basic_kyc_sync_is_never_retried(respx_mock: Any, mock_token: Any) -> None:
-    # A 500 is retried for idempotent requests, so one attempt proves the sync call isn't.
+@pytest.mark.parametrize("status_code", [408, 424, 500])
+def test_basic_kyc_sync_is_never_retried(
+    respx_mock: Any, mock_token: Any, status_code: int
+) -> None:
+    # 408 and 500 are retried for idempotent requests, so one attempt proves the sync call isn't.
     route = respx_mock.post(f"{BASE_URL}/v3/basic_kyc/sync").mock(
-        return_value=httpx.Response(500, json={"status": "Internal Server Error", "message": "x"})
+        return_value=httpx.Response(status_code, json={"status": "Error", "message": "x"})
     )
-    with pytest.raises(usesmileid.errors.APIError) as raised:
+    with pytest.raises(usesmileid.errors.SmileIDError) as raised:
         make_client().basic_kyc.verify_sync(**BASIC_KYC_KWARGS)
-    assert raised.value.status_code == 500
+    assert raised.value.status_code == status_code
+    assert raised.value.job_id is None
     assert route.call_count == 1
+
+
+def test_basic_kyc_sync_408_reads_the_outcome_from_the_status_endpoint(
+    respx_mock: Any, mock_token: Any
+) -> None:
+    """Follows the README: after a 408, read the job's status rather than resubmit."""
+    job_id = "job_01h8x9y2z3a4b5c6d7e8f9g0h1"
+    sync_route = respx_mock.post(f"{BASE_URL}/v3/basic_kyc/sync").mock(
+        return_value=httpx.Response(
+            408,
+            json={"status": "Request Timeout", "message": "The ID authority timed out."},
+            headers={"SmileID-Job-ID": job_id},
+        )
+    )
+    status_route = respx_mock.get(f"{BASE_URL}/v3/status/{job_id}").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "status": "error",
+                "job_id": job_id,
+                "user_id": "user_01h8x9y2z3a4b5c6d7e8f9g0h1",
+                "message": "Job completed",
+            },
+        )
+    )
+    client = make_client()
+    with pytest.raises(usesmileid.errors.SmileIDError) as raised:
+        client.basic_kyc.verify_sync(**BASIC_KYC_KWARGS)
+    err = raised.value
+    assert err.status_code == 408
+    assert err.job_id == job_id
+
+    status = client.verifications.retrieve(err.job_id)
+
+    assert sync_route.call_count == 1
+    assert status_route.call_count == 1
+    assert status_route.calls.last.request.url.path == f"/v3/status/{job_id}"
+    assert status.status == "error"
+    assert status.job_id == job_id
+    assert status.is_complete
+
+
+def test_sync_result_job_id_prefers_the_header_over_the_body(
+    respx_mock: Any, mock_token: Any
+) -> None:
+    route = respx_mock.post(f"{BASE_URL}/v3/basic_kyc/sync").mock(
+        return_value=httpx.Response(200, json={**BASIC_KYC_RESULT, "job_id": "job_from_body"})
+    )
+    assert make_client().basic_kyc.verify_sync(**BASIC_KYC_KWARGS).job_id == "job_from_body"
+
+    route.mock(
+        return_value=httpx.Response(
+            200,
+            json={**BASIC_KYC_RESULT, "job_id": "job_from_body"},
+            headers={"smileid-job-id": "job_from_header"},
+        )
+    )
+    assert make_client().basic_kyc.verify_sync(**BASIC_KYC_KWARGS).job_id == "job_from_header"
 
 
 def test_basic_kyc_sync_parses_a_null_match_results(respx_mock: Any, mock_token: Any) -> None:
@@ -668,6 +750,7 @@ def test_basic_kyc_sync_parses_a_null_match_results(respx_mock: Any, mock_token:
     assert result.status == "error"
     assert result.match_results is None
     assert result.kyc_receipt is None
+    assert result.job_id is None
 
 
 def test_basic_kyc_sync_never_sends_the_default_callback(respx_mock: Any, mock_token: Any) -> None:

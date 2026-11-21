@@ -156,7 +156,25 @@ else:
     print(result.status, result.message)
 ```
 
-`verify_sync` is never retried, because a repeat would run and bill a second lookup. If it fails with a 408, 424 or 500, the job may still have run, so don't resubmit it automatically. The sync endpoint ignores `callback_url`, so the client's `default_callback_url` isn't sent.
+`result.job_id` is the job's ID, from the `SmileID-Job-ID` response header.
+
+`verify_sync` is never retried, because a repeat would run and bill a second lookup. The sync endpoint ignores `callback_url`, so the client's `default_callback_url` isn't sent.
+
+If `verify_sync` fails with a 408 or 424, the job may still have run, so don't resubmit it: a resubmission bills a second lookup. Read the outcome with the job ID from the error instead:
+
+```python
+import usesmileid.errors
+
+try:
+    result = smile.basic_kyc.verify_sync(...)
+except usesmileid.errors.SmileIDError as err:
+    if err.status_code in (408, 424, 500) and err.job_id is not None:
+        status = smile.verifications.retrieve(err.job_id)
+    else:
+        raise
+```
+
+Do the same for a 500 that has a `job_id`. A 500 with no `job_id` means the job wasn't created.
 
 ### Enhanced document verification
 
@@ -292,7 +310,11 @@ result = smile.aml.screen_sync(
 print(result.status)  # "clear", "block", "attention" or "error"
 ```
 
+`result.job_id` is the job's ID, from the `SmileID-Job-ID` response header.
+
 `screen_sync` retries a failed request only when you pass an `idempotency_key`. Without a key a retry would start a second, billed screening.
+
+If `screen_sync` fails with a 408, nothing was billed and the job is final in `error`, so resubmit it rather than reading its status. Pass an `idempotency_key` to make the resubmission safe to repeat. If it fails with a 500 and the error has a `job_id`, read the outcome with `smile.verifications.retrieve(err.job_id)`.
 
 ### AML monitoring
 
@@ -418,7 +440,7 @@ Submission endpoints return an `AcceptedResponse`. Use `response.is_accepted` ra
 
 ## Error handling
 
-All errors raised by the SDK subclass `usesmileid.errors.SmileIDError` and expose `status_code`, `status`, `message`, `code`, `request_id` and `raw_body`.
+All errors raised by the SDK subclass `usesmileid.errors.SmileIDError` and expose `status_code`, `status`, `message`, `code`, `request_id`, `raw_body` and `job_id`. `job_id` is the `SmileID-Job-ID` response header, or `None` when the response didn't have one.
 
 ```python
 import usesmileid.errors

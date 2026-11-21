@@ -40,6 +40,42 @@ def test_400_status_message_shape(respx_mock: Any, mock_token: Any) -> None:
     assert err.message == "Either email or phone_number is required."
     assert err.code is None
     assert err.raw_body is not None and "phone_number" in err.raw_body
+    assert err.job_id is None
+
+
+@pytest.mark.parametrize(
+    "header_name", ["SmileID-Job-ID", "smileid-job-id", "SMILEID-JOB-ID"]
+)
+def test_408_carries_the_job_id_header(
+    respx_mock: Any, mock_token: Any, header_name: str
+) -> None:
+    respx_mock.post(f"{BASE_URL}/v3/enhanced_kyc").mock(
+        return_value=httpx.Response(
+            408,
+            json={"status": "Request Timeout", "message": "The ID authority timed out."},
+            headers={header_name: "job_01h8x9y2z3a4b5c6d7e8f9g0h1"},
+        )
+    )
+    with pytest.raises(usesmileid.errors.SmileIDError) as excinfo:
+        _verify(make_client())
+    err = excinfo.value
+    assert err.status_code == 408
+    assert err.job_id == "job_01h8x9y2z3a4b5c6d7e8f9g0h1"
+
+
+def test_error_without_job_id_header_has_none(respx_mock: Any, mock_token: Any) -> None:
+    respx_mock.post(f"{BASE_URL}/v3/enhanced_kyc").mock(
+        return_value=httpx.Response(500, json={"message": "Internal server error"})
+    )
+    with pytest.raises(usesmileid.errors.APIError) as excinfo:
+        _verify(make_client())
+    assert excinfo.value.job_id is None
+
+
+def test_job_id_defaults_to_none_when_constructed_directly() -> None:
+    err = usesmileid.errors.SmileIDError("boom", status_code=500)
+    assert err.job_id is None
+    assert usesmileid.errors.APIError("boom", job_id="job_1").job_id == "job_1"
 
 
 def test_402_payment_required(respx_mock: Any, mock_token: Any) -> None:

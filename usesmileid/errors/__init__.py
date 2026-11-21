@@ -3,7 +3,8 @@
 One base class, ``SmileIDError``; typed subclasses keyed on HTTP status. Every
 error exposes ``status_code``, ``status`` (HTTP status text from the body when
 present), ``message``, ``code`` (present only on the services ``{error, code}``
-shape), ``request_id`` and ``raw_body``.
+shape), ``request_id``, ``raw_body`` and ``job_id`` (from the
+``SmileID-Job-ID`` response header, when the API sent one).
 """
 
 from __future__ import annotations
@@ -47,6 +48,7 @@ class SmileIDError(Exception):
         code: Optional[str] = None,
         request_id: Optional[str] = None,
         raw_body: Optional[str] = None,
+        job_id: Optional[str] = None,
     ) -> None:
         super().__init__(message or "")
         self.message = message
@@ -55,6 +57,10 @@ class SmileIDError(Exception):
         self.code = code
         self.request_id = request_id
         self.raw_body = raw_body
+        #: The job the failed request created, from the ``SmileID-Job-ID``
+        #: response header, or ``None`` when the response had no such header.
+        #: Read the job's outcome with ``verifications.retrieve(err.job_id)``.
+        self.job_id = job_id
 
 
 class InvalidRequestError(SmileIDError):
@@ -115,6 +121,15 @@ def _request_id(response: "httpx.Response") -> Optional[str]:
     )
 
 
+def _job_id_header(response: "httpx.Response") -> Optional[str]:
+    """Return the ``SmileID-Job-ID`` response header, or ``None`` when absent.
+
+    httpx header lookup is case-insensitive, so any casing the API sends is
+    found.
+    """
+    return response.headers.get("smileid-job-id") or None
+
+
 def parse_success_json(response: "httpx.Response") -> "dict[str, Any]":
     """Return the response body as a JSON object, or raise.
 
@@ -133,6 +148,7 @@ def parse_success_json(response: "httpx.Response") -> "dict[str, Any]":
             status_code=response.status_code,
             request_id=_request_id(response),
             raw_body=raw_body,
+            job_id=_job_id_header(response),
         )
     return parsed
 
@@ -190,4 +206,5 @@ def parse_error(response: "httpx.Response") -> SmileIDError:
         code=code,
         request_id=request_id,
         raw_body=raw_body,
+        job_id=_job_id_header(response),
     )
