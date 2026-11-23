@@ -8,13 +8,13 @@ arguments.
 from __future__ import annotations
 
 from types import TracebackType
-from typing import Any, List, Optional, Type, Union
+from typing import Any, List, Optional, Type, TypeVar, Union
 
 import httpx
 
 from usesmileid.client.config import ClientConfig, validate_callback_url
 from usesmileid.client.transport import Transport
-from usesmileid.errors import ValidationError, parse_success_json
+from usesmileid.errors import ValidationError, _job_id_header, parse_success_json
 from usesmileid.generated import operations
 from usesmileid.generated.models import (
     AcceptedResponse,
@@ -36,6 +36,7 @@ from usesmileid.helpers.polling import wait_until_complete
 from usesmileid.helpers.user_details import UserDetails, normalize_user_details
 
 ConsentInput = Union[Consent, dict]
+_SyncResult = TypeVar("_SyncResult", BasicKycResult, OneTimeAmlResult)
 UserDetailsInput = Union[UserDetails, dict]
 
 
@@ -95,6 +96,18 @@ class EnhancedKycResource(_Resource):
         )
         response = self._transport.send(request, timeout=timeout)
         return AcceptedResponse.model_validate(parse_success_json(response))
+
+
+def _sync_result(model: Type[_SyncResult], response: httpx.Response) -> _SyncResult:
+    """Parse a sync 200 body, taking ``job_id`` from the ``SmileID-Job-ID`` header.
+
+    The header wins; a ``job_id`` in the body is kept only when it is absent.
+    """
+    body = parse_success_json(response)
+    header = _job_id_header(response)
+    if header is not None:
+        body["job_id"] = header
+    return model.model_validate(body)
 
 
 def _explicit_callback(callback_url: Optional[str]) -> Optional[str]:
@@ -158,8 +171,11 @@ class BasicKycResource(_Resource):
         The sync endpoint ignores ``callback_url``, so the client's default
         callback URL is never sent; a ``callback_url`` passed here is sent as
         given. The request is not retried: a repeat would run and bill a second
-        lookup. After a 408, 424 or 500 the job may still have run, so don't
-        resubmit it automatically.
+        lookup. After a 408 or 424 the job may still have run, so don't
+        resubmit it: read its outcome with ``verifications.retrieve(err.job_id)``.
+        The same applies to a 500 whose error has a ``job_id``; a 500 without
+        one means the job was not created. The result's ``job_id`` comes from
+        the ``SmileID-Job-ID`` response header.
         """
         request = operations.basic_kyc_sync(
             country=country,
@@ -174,7 +190,7 @@ class BasicKycResource(_Resource):
             metadata=metadata,
         )
         response = self._transport.send(request, timeout=timeout)
-        return BasicKycResult.model_validate(parse_success_json(response))
+        return _sync_result(BasicKycResult, response)
 
 
 class DocumentsResource(_Resource):
@@ -509,6 +525,10 @@ class AmlResource(_Resource):
 
         Pass ``idempotency_key`` to make a retry safe: a repeated key returns
         the original result instead of running a second, billed screening.
+        After a 408 nothing was billed and the job is final in ``error``, so
+        resubmit rather than poll. After a 500 whose error has a ``job_id``,
+        read the outcome with ``verifications.retrieve(err.job_id)``. The
+        result's ``job_id`` comes from the ``SmileID-Job-ID`` response header.
         """
         request = operations.one_time_aml_sync(
             countries=countries,
@@ -526,7 +546,7 @@ class AmlResource(_Resource):
             idempotency_key=idempotency_key,
         )
         response = self._transport.send(request, timeout=timeout)
-        return OneTimeAmlResult.model_validate(parse_success_json(response))
+        return _sync_result(OneTimeAmlResult, response)
 
     def monitor(
         self,

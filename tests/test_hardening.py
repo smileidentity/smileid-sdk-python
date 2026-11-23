@@ -113,7 +113,7 @@ def test_2xx_non_json_body_raises_unexpected_response(
     respx_mock: Any, mock_token: Any
 ) -> None:
     respx_mock.post(f"{BASE_URL}/v3/enhanced_kyc").mock(
-        return_value=httpx.Response(202, text="OK")
+        return_value=httpx.Response(202, text="OK", headers={"SmileID-Job-ID": "job_202"})
     )
     client = make_client()
     with pytest.raises(usesmileid.errors.UnexpectedResponseError) as excinfo:
@@ -121,6 +121,7 @@ def test_2xx_non_json_body_raises_unexpected_response(
     err = excinfo.value
     assert err.status_code == 202
     assert err.raw_body == "OK"
+    assert err.job_id == "job_202"
     assert isinstance(err, usesmileid.errors.SmileIDError)
 
 

@@ -9,6 +9,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - Basic KYC: `basic_kyc.verify` (`POST /v3/basic_kyc`) and `basic_kyc.verify_sync` (`POST /v3/basic_kyc/sync`), which returns a `BasicKycResult`. Both mint a token with the `basic_kyc` product claim.
+- `SmileIDError.job_id`: the job ID from the `SmileID-Job-ID` response header, or `None` when the response has none. It is set on every error built from an HTTP response. After a Basic KYC sync 408 or 424, or a 500 that has a `job_id`, read the outcome with `verifications.retrieve(err.job_id)` instead of resubmitting.
+- `BasicKycResult.job_id` and `OneTimeAmlResult.job_id`: the job ID from the `SmileID-Job-ID` header on the `basic_kyc.verify_sync` and `aml.screen_sync` response.
 
 ## [13.1.0] - 2026-11-19
 

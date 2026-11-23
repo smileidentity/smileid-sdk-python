@@ -150,7 +150,8 @@ class OneTimeAmlResult(_WireModel):
     """One-Time AML result: the 200 body of POST /v3/aml/sync and the async callback.
 
     ``status`` is the decision: ``clear``, ``block``, ``attention`` or ``error``.
-    Each entry of ``people`` is kept as the raw match record.
+    Each entry of ``people`` is kept as the raw match record. On the sync
+    response, ``job_id`` is the ``SmileID-Job-ID`` response header.
     """
 
     status: str
@@ -168,6 +169,7 @@ class OneTimeAmlResult(_WireModel):
     consent: Optional[Dict[str, Any]] = None
     antifraud: Optional[Dict[str, Any]] = None
     device_signals: Optional[Dict[str, Any]] = None
+    job_id: Optional[str] = None
 
 
 class BasicKycMatchResults(_WireModel):
@@ -198,6 +200,7 @@ class BasicKycResult(_WireModel):
 
     ``status`` is the outcome: ``clear``, ``attention``, ``block`` or ``error``.
     ``match_results`` holds a verdict per field, never the authority's record.
+    On the sync response, ``job_id`` is the ``SmileID-Job-ID`` response header.
     """
 
     status: str
@@ -213,6 +216,7 @@ class BasicKycResult(_WireModel):
     antifraud: Optional[Dict[str, Any]] = None
     device_signals: Optional[Dict[str, Any]] = None
     kyc_receipt: Optional[str] = None
+    job_id: Optional[str] = None
 
 
 class AmlMonitoringNewsItem(_WireModel):
