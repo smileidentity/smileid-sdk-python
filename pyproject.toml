@@ -57,6 +57,11 @@ dev = [
 [tool.hatch.build.targets.wheel]
 packages = ["usesmileid"]
 
+[tool.hatch.build.targets.sdist]
+# Repository tooling, not part of the package. Its test goes with it, so the
+# sdist's test suite doesn't look for a file the sdist doesn't have.
+exclude = ["spec-coverage.json", "tests/test_spec_coverage.py"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py38"
