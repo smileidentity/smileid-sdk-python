@@ -1,0 +1,126 @@
+{
+  "spec_tag": "v3.1215.0",
+  "operations": {
+    "getV3Token": {
+      "method": "client._transport._mint_token",
+      "path": "POST /v3/token"
+    },
+    "submitEnhancedKyc": {
+      "method": "client.enhanced_kyc.verify",
+      "path": "POST /v3/enhanced_kyc"
+    },
+    "submitEnhancedKycSync": {
+      "method": "client.enhanced_kyc.verify_sync",
+      "path": "POST /v3/enhanced_kyc/sync",
+      "response_headers": {
+        "Response-Signature": "EnhancedKycResult.response_signature",
+        "Response-Timestamp": "EnhancedKycResult.response_timestamp",
+        "SmileID-Job-ID": "EnhancedKycResult.job_id; SmileIDError.job_id on 408, 424 and 500",
+        "User-ID": "EnhancedKycResult.user_id"
+      }
+    },
+    "submitBasicKyc": {
+      "method": "client.basic_kyc.verify",
+      "path": "POST /v3/basic_kyc"
+    },
+    "submitBasicKycSync": {
+      "method": "client.basic_kyc.verify_sync",
+      "path": "POST /v3/basic_kyc/sync",
+      "response_headers": {
+        "Response-Signature": {"unsupported": "BasicKycResult doesn't carry the response signature, so callers can't verify it."},
+        "Response-Timestamp": {"unsupported": "BasicKycResult doesn't carry the response timestamp."},
+        "SmileID-Job-ID": "BasicKycResult.job_id; SmileIDError.job_id on 408, 424 and 500",
+        "User-ID": {"unsupported": "BasicKycResult has no user_id field, and the SDK doesn't read this header."}
+      }
+    },
+    "v3DocumentVerificationEntry": {
+      "method": "client.documents.verify",
+      "path": "POST /v3/document_verification"
+    },
+    "v3EnhancedDocumentVerificationEntry": {
+      "method": "client.documents.verify_enhanced",
+      "path": "POST /v3/enhanced_document_verification"
+    },
+    "v3ResidencyDocumentVerificationEntry": {
+      "method": "client.documents.verify_residency",
+      "path": "POST /v3/residency_document_verification"
+    },
+    "v3BiometricKycEntry": {
+      "method": "client.biometric_kyc.verify",
+      "path": "POST /v3/biometric_kyc"
+    },
+    "v3BiometricEnrollment": {
+      "method": "client.biometric.enroll",
+      "path": "POST /v3/registration"
+    },
+    "v3BiometricAuthentication": {
+      "method": "client.biometric.authenticate",
+      "path": "POST /v3/authentication"
+    },
+    "v3SmartSelfieCompare": {
+      "method": "client.biometric.compare",
+      "path": "POST /v3/compare"
+    },
+    "submitOneTimeAml": {
+      "method": "client.aml.screen",
+      "path": "POST /v3/aml"
+    },
+    "submitOneTimeAmlSync": {
+      "method": "client.aml.screen_sync",
+      "path": "POST /v3/aml/sync",
+      "response_headers": {
+        "Response-Signature": {"unsupported": "OneTimeAmlResult doesn't carry the response signature, so callers can't verify it."},
+        "Response-Timestamp": {"unsupported": "OneTimeAmlResult doesn't carry the response timestamp."},
+        "SmileID-Job-ID": "OneTimeAmlResult.job_id; SmileIDError.job_id on 408 and 500",
+        "User-ID": {"unsupported": "OneTimeAmlResult has no user_id field, and the SDK doesn't read this header."}
+      }
+    },
+    "submitAmlMonitoring": {
+      "method": "client.aml.monitor",
+      "path": "POST /v3/aml/monitoring"
+    },
+    "getAmlMonitoringNews": {
+      "method": "client.aml.monitoring_news",
+      "path": "GET /v3/aml/monitoring/{job_id}/news/{reference}"
+    },
+    "getVerificationStatus": {
+      "method": "client.verifications.retrieve",
+      "path": "GET /v3/status/{jobId}",
+      "response_headers": {
+        "api_version": {"unsupported": "The SDK doesn't read this header, and JobStatus has no field for it."},
+        "job_id": {"unsupported": "The SDK doesn't read this header. JobStatus.job_id holds the job ID from the response body on 200, 202 and 404."},
+        "user_id": {"unsupported": "The SDK doesn't read this header. JobStatus.user_id holds the user ID from the response body on 200, 202 and 404."}
+      }
+    },
+    "replayCallback": {
+      "method": "client.verifications.replay",
+      "path": "POST /v3/replay/{job_id}"
+    },
+    "reportUserFraud": {
+      "method": "client.users.report_fraud",
+      "path": "POST /v3/users/{user_id}/report_fraud"
+    },
+    "getBankCodes": {
+      "method": "client.services.bank_codes",
+      "path": "GET /v3/services/bank_codes"
+    },
+    "getSupportedIdTypes": {
+      "method": "client.services.supported_id_types",
+      "path": "GET /v3/services/supported_id_types"
+    },
+    "getSupportedDocuments": {
+      "method": "client.services.supported_documents",
+      "path": "GET /v3/services/supported_documents"
+    },
+    "getIdStatus": {
+      "method": "client.services.id_status",
+      "path": "GET /v3/services/id_status"
+    },
+    "v3AddressVerification": {"unsupported": "Planned for 13.3.0."},
+    "v3PhoneVerification": {"unsupported": "Planned for 13.3.0."},
+    "listSmileLinks": {"unsupported": "Planned for 13.3.0."},
+    "createSmileLink": {"unsupported": "Planned for 13.3.0."},
+    "getSmileLink": {"unsupported": "Planned for 13.3.0."},
+    "updateSmileLink": {"unsupported": "Planned for 13.3.0."}
+  }
+}
