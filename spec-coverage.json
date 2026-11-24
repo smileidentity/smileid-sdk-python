@@ -9,7 +9,16 @@
       "method": "client.enhanced_kyc.verify",
       "path": "POST /v3/enhanced_kyc"
     },
-    "submitEnhancedKycSync": {"unsupported": "Added by the Enhanced KYC sync pull request, #50."},
+    "submitEnhancedKycSync": {
+      "method": "client.enhanced_kyc.verify_sync",
+      "path": "POST /v3/enhanced_kyc/sync",
+      "response_headers": {
+        "Response-Signature": "EnhancedKycResult.response_signature",
+        "Response-Timestamp": "EnhancedKycResult.response_timestamp",
+        "SmileID-Job-ID": "EnhancedKycResult.job_id; SmileIDError.job_id on 408, 424 and 500",
+        "User-ID": "EnhancedKycResult.user_id"
+      }
+    },
     "submitBasicKyc": {
       "method": "client.basic_kyc.verify",
       "path": "POST /v3/basic_kyc"
