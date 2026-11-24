@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [13.2.0] - 2026-11-24
+
 ### Added
 
 - Basic KYC: `basic_kyc.verify` (`POST /v3/basic_kyc`) and `basic_kyc.verify_sync` (`POST /v3/basic_kyc/sync`), which returns a `BasicKycResult`. Both mint a token with the `basic_kyc` product claim.
@@ -78,7 +80,8 @@ First public release of the Smile ID Python server SDK.
   error the API returns.
 - Automatic token management and retries for idempotent operations.
 
-[Unreleased]: https://github.com/smileidentity/smileid-sdk-python/compare/v13.1.0...HEAD
+[Unreleased]: https://github.com/smileidentity/smileid-sdk-python/compare/v13.2.0...HEAD
+[13.2.0]: https://github.com/smileidentity/smileid-sdk-python/compare/v13.1.0...v13.2.0
 [13.1.0]: https://github.com/smileidentity/smileid-sdk-python/compare/v13.0.0...v13.1.0
 [13.0.0]: https://github.com/smileidentity/smileid-sdk-python/compare/v12.1.0...v13.0.0
 [12.1.0]: https://github.com/smileidentity/smileid-sdk-python/compare/v12.0.0...v12.1.0
