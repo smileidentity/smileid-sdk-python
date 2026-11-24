@@ -27,10 +27,10 @@
       "method": "client.basic_kyc.verify_sync",
       "path": "POST /v3/basic_kyc/sync",
       "response_headers": {
-        "Response-Signature": {"unsupported": "BasicKycResult doesn't carry the response signature, so callers can't verify it."},
-        "Response-Timestamp": {"unsupported": "BasicKycResult doesn't carry the response timestamp."},
+        "Response-Signature": "BasicKycResult.response_signature",
+        "Response-Timestamp": "BasicKycResult.response_timestamp",
         "SmileID-Job-ID": "BasicKycResult.job_id; SmileIDError.job_id on 408, 424 and 500",
-        "User-ID": {"unsupported": "BasicKycResult has no user_id field, and the SDK doesn't read this header."}
+        "User-ID": "BasicKycResult.user_id"
       }
     },
     "v3DocumentVerificationEntry": {
@@ -69,10 +69,10 @@
       "method": "client.aml.screen_sync",
       "path": "POST /v3/aml/sync",
       "response_headers": {
-        "Response-Signature": {"unsupported": "OneTimeAmlResult doesn't carry the response signature, so callers can't verify it."},
-        "Response-Timestamp": {"unsupported": "OneTimeAmlResult doesn't carry the response timestamp."},
+        "Response-Signature": "OneTimeAmlResult.response_signature",
+        "Response-Timestamp": "OneTimeAmlResult.response_timestamp",
         "SmileID-Job-ID": "OneTimeAmlResult.job_id; SmileIDError.job_id on 408 and 500",
-        "User-ID": {"unsupported": "OneTimeAmlResult has no user_id field, and the SDK doesn't read this header."}
+        "User-ID": "OneTimeAmlResult.user_id"
       }
     },
     "submitAmlMonitoring": {
@@ -116,11 +116,29 @@
       "method": "client.services.id_status",
       "path": "GET /v3/services/id_status"
     },
-    "v3AddressVerification": {"unsupported": "Planned for 13.3.0."},
-    "v3PhoneVerification": {"unsupported": "Planned for 13.3.0."},
-    "listSmileLinks": {"unsupported": "Planned for 13.3.0."},
-    "createSmileLink": {"unsupported": "Planned for 13.3.0."},
-    "getSmileLink": {"unsupported": "Planned for 13.3.0."},
-    "updateSmileLink": {"unsupported": "Planned for 13.3.0."}
+    "v3AddressVerification": {
+      "method": "client.address.verify",
+      "path": "POST /v3/address"
+    },
+    "v3PhoneVerification": {
+      "method": "client.phone.verify",
+      "path": "POST /v3/phone"
+    },
+    "listSmileLinks": {
+      "method": "client.smile_links.list",
+      "path": "GET /v3/smile_links"
+    },
+    "createSmileLink": {
+      "method": "client.smile_links.create",
+      "path": "POST /v3/smile_links"
+    },
+    "getSmileLink": {
+      "method": "client.smile_links.get",
+      "path": "GET /v3/smile_links/{refId}"
+    },
+    "updateSmileLink": {
+      "method": "client.smile_links.update",
+      "path": "PUT /v3/smile_links/{refId}"
+    }
   }
 }

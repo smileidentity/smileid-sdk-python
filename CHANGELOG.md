@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Address verification: `address.verify` (`POST /v3/address`). The token carries the `address_verification` product claim.
+- Phone number verification: `phone.verify` (`POST /v3/phone`). The token carries the `phone_number_verification` product claim.
+- Smile Links: `smile_links.create` (`POST /v3/smile_links`), `smile_links.list` (`GET /v3/smile_links`), `smile_links.get` (`GET /v3/smile_links/{refId}`) and `smile_links.update` (`PUT /v3/smile_links/{refId}`), with the `SmileLinkCreated`, `SmileLinkResource` and `SmileLinkListResponse` models. These tokens carry no product claim.
+- `BasicKycResult` and `OneTimeAmlResult` now carry `user_id`, `response_signature` and `response_timestamp`, read from the `User-ID`, `Response-Signature` and `Response-Timestamp` headers of the sync response. `user_id` falls back to the body when the header is absent.
+
 ## [13.2.0] - 2026-11-24
 
 ### Added

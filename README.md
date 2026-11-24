@@ -123,7 +123,7 @@ result = smile.enhanced_kyc.verify_sync(
 print(result.status, result.reason, result.message)
 ```
 
-`verify_sync` returns an `EnhancedKycResult`, which holds the same payload the async job would have sent to your callback URL. `result.job_id` is the job's ID, from the `SmileID-Job-ID` response header. `result.user_id` comes from the `User-ID` response header, or from the body when the header is absent. The ID authority's data and any other field the SDK doesn't type are in `result.model_extra`.
+`verify_sync` returns an `EnhancedKycResult`, which holds the same payload the async job would have sent to your callback URL. `result.job_id` and `result.user_id` are the `SmileID-Job-ID` and `User-ID` response headers. `result.response_signature` and `result.response_timestamp` are the `Response-Signature` and `Response-Timestamp` headers, for your own webhook verification code to check; each is `None` when the header is missing. `result.user_id` comes from the `User-ID` response header, or from the body when the header is absent. The ID authority's data and any other field the SDK doesn't type are in `result.model_extra`.
 
 `result.response_signature` and `result.response_timestamp` are the `Response-Signature` and `Response-Timestamp` response headers, or `None` when absent. They are the same headers a webhook carries, so you can check them with your own webhook verification code. The SDK doesn't verify them.
 
@@ -189,7 +189,7 @@ else:
     print(result.status, result.message)
 ```
 
-`result.job_id` is the job's ID, from the `SmileID-Job-ID` response header.
+`result.job_id` and `result.user_id` are the `SmileID-Job-ID` and `User-ID` response headers. `result.response_signature` and `result.response_timestamp` are the `Response-Signature` and `Response-Timestamp` headers, for your own webhook verification code to check; each is `None` when the header is missing.
 
 `verify_sync` is never retried, because a repeat would run and bill a second lookup. The sync endpoint ignores `callback_url`, so the client's `default_callback_url` isn't sent.
 
@@ -343,7 +343,7 @@ result = smile.aml.screen_sync(
 print(result.status)  # "clear", "block", "attention" or "error"
 ```
 
-`result.job_id` is the job's ID, from the `SmileID-Job-ID` response header.
+`result.job_id` and `result.user_id` are the `SmileID-Job-ID` and `User-ID` response headers. `result.response_signature` and `result.response_timestamp` are the `Response-Signature` and `Response-Timestamp` headers, for your own webhook verification code to check; each is `None` when the header is missing.
 
 `screen_sync` retries a failed request only when you pass an `idempotency_key`. Without a key a retry would start a second, billed screening.
 
@@ -369,6 +369,57 @@ news = smile.aml.monitoring_news(
     limit=25,
 )
 print(news.meta.total_count, [item.title for item in news.news])
+```
+
+### Address verification
+
+Check an address against the address on record with a data provider. The result arrives on the callback URL.
+
+```python
+accepted = smile.address.verify(
+    address="12 Test Road, Testville",
+    country="NG",
+    utility_number="0123456789",   # Nigeria: utility_number, utility_provider, utility_type
+    utility_provider="IKEDC",
+    utility_type="PrePaid",
+    user_details=user_details,
+    consent=consent,
+)
+# South Africa: pass id_number instead of the utility fields.
+```
+
+### Phone number verification
+
+Match a phone number's registration against a name and, optionally, an ID number. Ghana needs `operator`, and Kenya needs `id_number`.
+
+```python
+accepted = smile.phone.verify(
+    country="NG",
+    phone_number="+2348012345678",
+    user_details=user_details,
+    consent=consent,
+)
+```
+
+### Smile Links
+
+Create hosted verification links to hand to your users, then read, list and update them.
+
+```python
+created = smile.smile_links.create(
+    id_types=[{"country": "NG", "id_type": "NIN", "verification_method": "enhanced_kyc"}],
+    name="Onboarding",
+    notice_privacy_policy_url="https://partner.example/privacy",
+    is_single_use=False,
+)
+print(created.ref_id, created.link)
+
+link = smile.smile_links.get(created.ref_id)
+page = smile.smile_links.list(limit=20, page=1, single_use=False)  # newest first
+print(page.meta.total_count, [item.total_jobs for item in page.links])
+
+# Only id_types and is_disabled can change; pass at least one.
+smile.smile_links.update(created.ref_id, is_disabled=True)
 ```
 
 ### Check a verification's status

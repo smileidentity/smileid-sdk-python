@@ -837,3 +837,193 @@ def aml_monitoring_news(
         query=query,
         ok_statuses=(200,),
     )
+
+
+def _identity_check_request(
+    path: str,
+    token_product: str,
+    *,
+    consent: dict,
+    user_details: dict,
+    user_id: Optional[str],
+    callback_url: Optional[str],
+    partner_params: Optional[dict],
+    metadata: Optional[list],
+) -> Request:
+    req = Request(
+        method="POST",
+        path=path,
+        token_product=token_product,
+        authenticated=True,
+        idempotent=False,
+        body_kind="multipart",
+        ok_statuses=(202,),
+    )
+    _add_scalar(req, "user_id", user_id)
+    _add_scalar(req, "callback_url", callback_url)
+    _add_json(req, "user_details", user_details)
+    _add_json(req, "consent", consent)
+    _add_json(req, "partner_params", partner_params)
+    _add_json(req, "metadata", metadata)
+    return req
+
+
+def address_verification(
+    *,
+    address: str,
+    country: str,
+    consent: dict,
+    user_details: dict,
+    id_number: Optional[str] = None,
+    utility_number: Optional[str] = None,
+    utility_provider: Optional[str] = None,
+    utility_type: Optional[str] = None,
+    user_id: Optional[str] = None,
+    callback_url: Optional[str] = None,
+    partner_params: Optional[dict] = None,
+    metadata: Optional[list] = None,
+) -> Request:
+    """POST /v3/address. user_id in BODY (optional)."""
+    req = _identity_check_request(
+        "/v3/address",
+        "address_verification",
+        consent=consent,
+        user_details=user_details,
+        user_id=user_id,
+        callback_url=callback_url,
+        partner_params=partner_params,
+        metadata=metadata,
+    )
+    _add_scalar(req, "address", address)
+    _add_scalar(req, "country", country)
+    _add_scalar(req, "id_number", id_number)
+    _add_scalar(req, "utility_number", utility_number)
+    _add_scalar(req, "utility_provider", utility_provider)
+    _add_scalar(req, "utility_type", utility_type)
+    return req
+
+
+def phone_verification(
+    *,
+    country: str,
+    phone_number: str,
+    consent: dict,
+    user_details: dict,
+    operator: Optional[str] = None,
+    id_number: Optional[str] = None,
+    user_id: Optional[str] = None,
+    callback_url: Optional[str] = None,
+    partner_params: Optional[dict] = None,
+    metadata: Optional[list] = None,
+) -> Request:
+    """POST /v3/phone. user_id in BODY (optional)."""
+    req = _identity_check_request(
+        "/v3/phone",
+        "phone_number_verification",
+        consent=consent,
+        user_details=user_details,
+        user_id=user_id,
+        callback_url=callback_url,
+        partner_params=partner_params,
+        metadata=metadata,
+    )
+    _add_scalar(req, "country", country)
+    _add_scalar(req, "phone_number", phone_number)
+    _add_scalar(req, "operator", operator)
+    _add_scalar(req, "id_number", id_number)
+    return req
+
+
+def create_smile_link(
+    *,
+    id_types: List[dict],
+    name: str,
+    notice_privacy_policy_url: str,
+    is_single_use: bool,
+    company_name: Optional[str] = None,
+    callback_url: Optional[str] = None,
+    description: Optional[str] = None,
+    expires_at: Optional[str] = None,
+    logo_url: Optional[str] = None,
+    redirect_url: Optional[str] = None,
+    theme_color: Optional[str] = None,
+    partner_params: Optional[dict] = None,
+    user_id: Optional[str] = None,
+) -> Request:
+    """POST /v3/smile_links. 201 carries the creation acknowledgment. No product."""
+    req = Request(
+        method="POST",
+        path="/v3/smile_links",
+        authenticated=True,
+        idempotent=False,
+        body_kind="multipart",
+        ok_statuses=(201,),
+    )
+    _add_json(req, "id_types", id_types)
+    _add_scalar(req, "name", name)
+    _add_scalar(req, "company_name", company_name)
+    _add_scalar(req, "notice_privacy_policy_url", notice_privacy_policy_url)
+    _add_scalar(req, "is_single_use", is_single_use)
+    _add_scalar(req, "callback_url", callback_url)
+    _add_scalar(req, "description", description)
+    _add_scalar(req, "expires_at", expires_at)
+    _add_scalar(req, "logo_url", logo_url)
+    _add_scalar(req, "redirect_url", redirect_url)
+    _add_scalar(req, "theme_color", theme_color)
+    _add_json(req, "partner_params", partner_params)
+    _add_scalar(req, "user_id", user_id)
+    return req
+
+
+def list_smile_links(
+    limit: Optional[int] = None,
+    page: Optional[int] = None,
+    single_use: Optional[bool] = None,
+) -> Request:
+    """GET /v3/smile_links. No product."""
+    query: Dict[str, str] = {}
+    if limit is not None:
+        query["limit"] = str(limit)
+    if page is not None:
+        query["page"] = str(page)
+    if single_use is not None:
+        query["single_use"] = "true" if single_use else "false"
+    return Request(
+        method="GET",
+        path="/v3/smile_links",
+        authenticated=True,
+        idempotent=True,
+        query=query,
+        ok_statuses=(200,),
+    )
+
+
+def get_smile_link(ref_id: str) -> Request:
+    """GET /v3/smile_links/{refId}. No product."""
+    return Request(
+        method="GET",
+        path=f"/v3/smile_links/{quote(ref_id, safe='')}",
+        authenticated=True,
+        idempotent=True,
+        ok_statuses=(200,),
+    )
+
+
+def update_smile_link(
+    ref_id: str,
+    *,
+    id_types: Optional[List[dict]] = None,
+    is_disabled: Optional[bool] = None,
+) -> Request:
+    """PUT /v3/smile_links/{refId}. Partial update; no product."""
+    req = Request(
+        method="PUT",
+        path=f"/v3/smile_links/{quote(ref_id, safe='')}",
+        authenticated=True,
+        idempotent=True,
+        body_kind="multipart",
+        ok_statuses=(200,),
+    )
+    _add_json(req, "id_types", id_types)
+    _add_scalar(req, "is_disabled", is_disabled)
+    return req

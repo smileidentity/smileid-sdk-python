@@ -7,6 +7,7 @@ arguments.
 
 from __future__ import annotations
 
+from datetime import datetime
 from types import TracebackType
 from typing import Any, List, Optional, Type, TypeVar, Union
 
@@ -14,7 +15,7 @@ import httpx
 
 from usesmileid.client.config import ClientConfig, validate_callback_url
 from usesmileid.client.transport import Transport
-from usesmileid.errors import ValidationError, _header, _job_id_header, parse_success_json
+from usesmileid.errors import ValidationError, _header, parse_success_json
 from usesmileid.generated import operations
 from usesmileid.generated.models import (
     AcceptedResponse,
@@ -27,6 +28,9 @@ from usesmileid.generated.models import (
     OneTimeAmlResult,
     ReplayCallbackResponse,
     ReportUserFraudResponse,
+    SmileLinkCreated,
+    SmileLinkListResponse,
+    SmileLinkResource,
     SupportedDocumentsResponse,
     SupportedIdTypesResponse,
 )
@@ -37,7 +41,7 @@ from usesmileid.helpers.polling import wait_until_complete
 from usesmileid.helpers.user_details import UserDetails, normalize_user_details
 
 ConsentInput = Union[Consent, dict]
-_SyncResult = TypeVar("_SyncResult", BasicKycResult, OneTimeAmlResult)
+_SyncResult = TypeVar("_SyncResult", BasicKycResult, EnhancedKycResult, OneTimeAmlResult)
 UserDetailsInput = Union[UserDetails, dict]
 
 
@@ -143,15 +147,16 @@ class EnhancedKycResource(_Resource):
             user_id=user_id,
         )
         response = self._transport.send(request, timeout=timeout)
-        return _enhanced_kyc_result(response)
+        return _sync_result(EnhancedKycResult, response)
 
 
-def _enhanced_kyc_result(response: httpx.Response) -> EnhancedKycResult:
-    """Parse an Enhanced KYC sync 200 body, filling in values from the headers.
+def _sync_result(model: Type[_SyncResult], response: httpx.Response) -> _SyncResult:
+    """Parse a sync 200 body, filling in values from the response headers.
 
     ``job_id`` and ``user_id`` come from the ``SmileID-Job-ID`` and ``User-ID``
-    headers, falling back to the body. ``response_signature`` and
-    ``response_timestamp`` come only from their headers.
+    headers: a header wins, and a body value is kept only when its header is
+    absent. ``response_signature`` and ``response_timestamp`` come only from
+    their headers.
     """
     body = parse_success_json(response)
     for field, header in (("job_id", "smileid-job-id"), ("user_id", "user-id")):
@@ -160,18 +165,6 @@ def _enhanced_kyc_result(response: httpx.Response) -> EnhancedKycResult:
             body[field] = value
     body["response_signature"] = _header(response, "response-signature")
     body["response_timestamp"] = _header(response, "response-timestamp")
-    return EnhancedKycResult.model_validate(body)
-
-
-def _sync_result(model: Type[_SyncResult], response: httpx.Response) -> _SyncResult:
-    """Parse a sync 200 body, taking ``job_id`` from the ``SmileID-Job-ID`` header.
-
-    The header wins; a ``job_id`` in the body is kept only when it is absent.
-    """
-    body = parse_success_json(response)
-    header = _job_id_header(response)
-    if header is not None:
-        body["job_id"] = header
     return model.model_validate(body)
 
 
@@ -239,8 +232,10 @@ class BasicKycResource(_Resource):
         lookup. After a 408 or 424 the job may still have run, so don't
         resubmit it: read its outcome with ``verifications.retrieve(err.job_id)``.
         The same applies to a 500 whose error has a ``job_id``; a 500 without
-        one means the job was not created. The result's ``job_id`` comes from
-        the ``SmileID-Job-ID`` response header.
+        one means the job was not created. The result's ``job_id`` and ``user_id``
+        come from the ``SmileID-Job-ID`` and ``User-ID`` response headers, and
+        it carries the ``Response-Signature`` and ``Response-Timestamp``
+        headers for your own webhook verification code to check.
         """
         request = operations.basic_kyc_sync(
             country=country,
@@ -593,7 +588,10 @@ class AmlResource(_Resource):
         After a 408 nothing was billed and the job is final in ``error``, so
         resubmit rather than poll. After a 500 whose error has a ``job_id``,
         read the outcome with ``verifications.retrieve(err.job_id)``. The
-        result's ``job_id`` comes from the ``SmileID-Job-ID`` response header.
+        result's ``job_id`` and ``user_id`` come from the ``SmileID-Job-ID`` and
+        ``User-ID`` response headers, and it carries the ``Response-Signature``
+        and ``Response-Timestamp`` headers for your own webhook verification
+        code to check.
         """
         request = operations.one_time_aml_sync(
             countries=countries,
@@ -664,6 +662,179 @@ class AmlResource(_Resource):
         )
         response = self._transport.send(request, timeout=timeout)
         return AmlMonitoringNewsResponse.model_validate(parse_success_json(response))
+
+
+class AddressResource(_Resource):
+    """Address verification: checks an address against the one on record."""
+
+    def verify(
+        self,
+        *,
+        address: str,
+        country: str,
+        user_details: UserDetailsInput,
+        consent: ConsentInput,
+        id_number: Optional[str] = None,
+        utility_number: Optional[str] = None,
+        utility_provider: Optional[str] = None,
+        utility_type: Optional[str] = None,
+        user_id: Optional[str] = None,
+        callback_url: Optional[str] = None,
+        partner_params: Optional[dict] = None,
+        metadata: Optional[list] = None,
+        timeout: Optional[float] = None,
+    ) -> AcceptedResponse:
+        """POST /v3/address. The result arrives on the callback URL.
+
+        Nigeria (``NG``) needs ``utility_number``, ``utility_provider`` and
+        ``utility_type``; South Africa (``ZA``) needs ``id_number``. Poll the
+        job with ``verifications.retrieve``.
+        """
+        request = operations.address_verification(
+            address=address,
+            country=country,
+            consent=_consent_dict(consent),
+            user_details=normalize_user_details(user_details),
+            id_number=id_number,
+            utility_number=utility_number,
+            utility_provider=utility_provider,
+            utility_type=utility_type,
+            user_id=user_id,
+            callback_url=self._callback(callback_url),
+            partner_params=partner_params,
+            metadata=metadata,
+        )
+        response = self._transport.send(request, timeout=timeout)
+        return AcceptedResponse.model_validate(parse_success_json(response))
+
+
+class PhoneResource(_Resource):
+    """Phone number verification: matches a number's registration."""
+
+    def verify(
+        self,
+        *,
+        country: str,
+        phone_number: str,
+        user_details: UserDetailsInput,
+        consent: ConsentInput,
+        operator: Optional[str] = None,
+        id_number: Optional[str] = None,
+        user_id: Optional[str] = None,
+        callback_url: Optional[str] = None,
+        partner_params: Optional[dict] = None,
+        metadata: Optional[list] = None,
+        timeout: Optional[float] = None,
+    ) -> AcceptedResponse:
+        """POST /v3/phone. The result arrives on the callback URL.
+
+        Ghana (``GH``) needs ``operator`` and Kenya (``KE``) needs
+        ``id_number``. Poll the job with ``verifications.retrieve``.
+        """
+        request = operations.phone_verification(
+            country=country,
+            phone_number=phone_number,
+            consent=_consent_dict(consent),
+            user_details=normalize_user_details(user_details),
+            operator=operator,
+            id_number=id_number,
+            user_id=user_id,
+            callback_url=self._callback(callback_url),
+            partner_params=partner_params,
+            metadata=metadata,
+        )
+        response = self._transport.send(request, timeout=timeout)
+        return AcceptedResponse.model_validate(parse_success_json(response))
+
+
+class SmileLinksResource(_Resource):
+    """Smile Links: hosted verification links to hand to end users."""
+
+    def create(
+        self,
+        *,
+        id_types: List[dict],
+        name: str,
+        notice_privacy_policy_url: str,
+        is_single_use: bool,
+        company_name: Optional[str] = None,
+        callback_url: Optional[str] = None,
+        description: Optional[str] = None,
+        expires_at: Union[datetime, str, None] = None,
+        logo_url: Optional[str] = None,
+        redirect_url: Optional[str] = None,
+        theme_color: Optional[str] = None,
+        partner_params: Optional[dict] = None,
+        user_id: Optional[str] = None,
+        timeout: Optional[float] = None,
+    ) -> SmileLinkCreated:
+        """POST /v3/smile_links. Returns the link's ``ref_id`` and its URL.
+
+        Each entry of ``id_types`` is a dict with ``country``, ``id_type`` and
+        ``verification_method``. ``expires_at`` is a ``datetime`` or an ISO 8601
+        string. Read the full link with ``get(ref_id)``. When ``callback_url``
+        is omitted, the client's default callback URL is sent if it has one.
+        """
+        request = operations.create_smile_link(
+            id_types=id_types,
+            name=name,
+            notice_privacy_policy_url=notice_privacy_policy_url,
+            is_single_use=is_single_use,
+            company_name=company_name,
+            callback_url=self._callback(callback_url),
+            description=description,
+            expires_at=expires_at.isoformat() if isinstance(expires_at, datetime) else expires_at,
+            logo_url=logo_url,
+            redirect_url=redirect_url,
+            theme_color=theme_color,
+            partner_params=partner_params,
+            user_id=user_id,
+        )
+        response = self._transport.send(request, timeout=timeout)
+        return SmileLinkCreated.model_validate(parse_success_json(response))
+
+    def list(
+        self,
+        *,
+        limit: Optional[int] = None,
+        page: Optional[int] = None,
+        single_use: Optional[bool] = None,
+        timeout: Optional[float] = None,
+    ) -> SmileLinkListResponse:
+        """GET /v3/smile_links. One page of links, newest first.
+
+        ``page`` starts at 1. ``single_use`` keeps only single-use (``True``) or
+        reusable (``False``) links.
+        """
+        request = operations.list_smile_links(limit=limit, page=page, single_use=single_use)
+        response = self._transport.send(request, timeout=timeout)
+        return SmileLinkListResponse.model_validate(parse_success_json(response))
+
+    def get(self, ref_id: str, *, timeout: Optional[float] = None) -> SmileLinkResource:
+        """GET /v3/smile_links/{refId}."""
+        response = self._transport.send(operations.get_smile_link(ref_id), timeout=timeout)
+        return SmileLinkResource.model_validate(parse_success_json(response))
+
+    def update(
+        self,
+        ref_id: str,
+        *,
+        id_types: Optional[List[dict]] = None,
+        is_disabled: Optional[bool] = None,
+        timeout: Optional[float] = None,
+    ) -> SmileLinkResource:
+        """PUT /v3/smile_links/{refId}. Returns the updated link.
+
+        Send ``id_types``, ``is_disabled`` or both; nothing else on a link can
+        change. Raises :class:`ValidationError` when neither is given.
+        """
+        if id_types is None and is_disabled is None:
+            raise ValidationError("update requires at least one of id_types or is_disabled")
+        request = operations.update_smile_link(
+            ref_id, id_types=id_types, is_disabled=is_disabled
+        )
+        response = self._transport.send(request, timeout=timeout)
+        return SmileLinkResource.model_validate(parse_success_json(response))
 
 
 class VerificationsResource(_Resource):
@@ -859,6 +1030,9 @@ class Client:
         self.biometric_kyc = BiometricKycResource(self)
         self.biometric = BiometricResource(self)
         self.aml = AmlResource(self)
+        self.address = AddressResource(self)
+        self.phone = PhoneResource(self)
+        self.smile_links = SmileLinksResource(self)
         self.verifications = VerificationsResource(self)
         self.users = UsersResource(self)
         self.services = ServicesResource(self)
@@ -891,7 +1065,10 @@ class Client:
 # The resource classes are listed so the API compatibility check covers the
 # methods users call through Client, such as client.enhanced_kyc.verify.
 __all__: List[str] = [
+    "AddressResource",
     "AmlResource",
+    "PhoneResource",
+    "SmileLinksResource",
     "BiometricKycResource",
     "BiometricResource",
     "Client",
