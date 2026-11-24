@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Basic KYC: `basic_kyc.verify` (`POST /v3/basic_kyc`) and `basic_kyc.verify_sync` (`POST /v3/basic_kyc/sync`), which returns a `BasicKycResult`. Both mint a token with the `basic_kyc` product claim.
 - `SmileIDError.job_id`: the job ID from the `SmileID-Job-ID` response header, or `None` when the response has none. It is set on every error built from an HTTP response. After a Basic KYC sync 408 or 424, or a 500 that has a `job_id`, read the outcome with `verifications.retrieve(err.job_id)` instead of resubmitting.
 - `BasicKycResult.job_id` and `OneTimeAmlResult.job_id`: the job ID from the `SmileID-Job-ID` header on the `basic_kyc.verify_sync` and `aml.screen_sync` response.
+- Enhanced KYC sync: `enhanced_kyc.verify_sync` (`POST /v3/enhanced_kyc/sync`), which takes the same arguments as `enhanced_kyc.verify` and returns an `EnhancedKycResult`: the payload the async callback would carry, with `job_id` and `user_id` from the `SmileID-Job-ID` and `User-ID` headers (falling back to the body), and `response_signature` and `response_timestamp` from the `Response-Signature` and `Response-Timestamp` headers for your own webhook verification code. Fields the SDK doesn't type are kept in `model_extra`. It is never retried. After a 408 or 424, or a 500 that has a `job_id`, read the outcome with `verifications.retrieve(err.job_id)` instead of resubmitting.
 
 ## [13.1.0] - 2026-11-19
 
