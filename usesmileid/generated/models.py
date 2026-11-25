@@ -170,7 +170,10 @@ class OneTimeAmlResult(_WireModel):
     consent: Optional[Dict[str, Any]] = None
     antifraud: Optional[Dict[str, Any]] = None
     device_signals: Optional[Dict[str, Any]] = None
+    user_id: Optional[str] = None
     job_id: Optional[str] = None
+    response_signature: Optional[str] = None
+    response_timestamp: Optional[str] = None
 
 
 class BasicKycMatchResults(_WireModel):
@@ -201,7 +204,10 @@ class BasicKycResult(_WireModel):
 
     ``status`` is the outcome: ``clear``, ``attention``, ``block`` or ``error``.
     ``match_results`` holds a verdict per field, never the authority's record.
-    On the sync response, ``job_id`` is the ``SmileID-Job-ID`` response header.
+    On the sync response, ``job_id``, ``user_id``, ``response_signature`` and
+    ``response_timestamp`` are the ``SmileID-Job-ID``, ``User-ID``,
+    ``Response-Signature`` and ``Response-Timestamp`` response headers when
+    present; ``job_id`` and ``user_id`` fall back to the body.
     """
 
     status: str
@@ -217,7 +223,10 @@ class BasicKycResult(_WireModel):
     antifraud: Optional[Dict[str, Any]] = None
     device_signals: Optional[Dict[str, Any]] = None
     kyc_receipt: Optional[str] = None
+    user_id: Optional[str] = None
     job_id: Optional[str] = None
+    response_signature: Optional[str] = None
+    response_timestamp: Optional[str] = None
 
 
 class EnhancedKycResult(_WireModel):
@@ -275,3 +284,76 @@ class AmlMonitoringNewsResponse(_WireModel):
     user_id: str
     meta: AmlMonitoringNewsMeta
     news: List[AmlMonitoringNewsItem] = []
+
+
+class SmileLinkIdType(_WireModel):
+    """One verification configuration a Smile Link offers."""
+
+    country: str
+    id_type: str
+    verification_method: str
+
+
+class SmileLinkCreated(_WireModel):
+    """POST /v3/smile_links response: the link's id and the URL to share."""
+
+    link: str
+    message: str
+    ref_id: str
+    user_id: Optional[str] = None
+
+
+class SmileLinkResource(_WireModel):
+    """A Smile Link, as returned by GET and PUT /v3/smile_links/{refId}.
+
+    Fields the SDK doesn't type are kept and can be read from ``model_extra``.
+    """
+
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+    ref_id: str
+    link: str
+    name: str
+    company_name: Optional[str] = None
+    description: Optional[str] = None
+    id_types: List[SmileLinkIdType] = []
+    is_single_use: Optional[bool] = None
+    callback_url: Optional[str] = None
+    notice_privacy_policy_url: Optional[str] = None
+    logo_url: Optional[str] = None
+    redirect_url: Optional[str] = None
+    theme_color: Optional[str] = None
+    expires_at: Optional[str] = None
+    disabled_at: Optional[str] = None
+    partner_params: Optional[Dict[str, Any]] = None
+    user_id: Optional[str] = None
+    token_provided_fields: List[str] = []
+    token_provided_values: Dict[str, Any] = {}
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class SmileLinkListItem(SmileLinkResource):
+    """A link in the listing, with the outcome counts of its jobs."""
+
+    clear: int
+    block: int
+    attention: int
+    error: int
+    successful_jobs: int
+    failed_jobs: int
+    total_jobs: int
+
+
+class SmileLinkListMeta(_WireModel):
+    current_page: int
+    limit: int
+    total_count: int
+    total_pages: int
+
+
+class SmileLinkListResponse(_WireModel):
+    """GET /v3/smile_links response."""
+
+    links: List[SmileLinkListItem]
+    meta: SmileLinkListMeta

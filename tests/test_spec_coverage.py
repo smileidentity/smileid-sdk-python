@@ -28,6 +28,7 @@ _DUMMIES: Dict[str, Any] = {
     "bool": True,
     "dict": {},
     "List[str]": [_PARAM],
+    "List[dict]": [{}],
     "BinaryPart": _BINARY,
     "List[BinaryPart]": [_BINARY],
 }
