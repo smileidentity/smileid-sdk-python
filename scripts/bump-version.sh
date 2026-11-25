@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 # Bumps the SDK version and cuts a CHANGELOG release section.
 #
-# Usage: scripts/bump-version.sh <major|minor|patch>
+# Usage: scripts/bump-version.sh <major|minor|patch|X.Y.Z>
+#
+# A part bumps that part of the current version. An exact X.Y.Z sets that
+# version, which must be strictly greater than the current one; the release
+# train uses it so an SDK that skipped a release can jump to the shared version.
 #
 # Updates the version in pyproject.toml (which release.yml checks the tag
 # against) and usesmileid/_version.py, then moves the CHANGELOG.md
@@ -18,11 +22,14 @@ die() {
   exit 1
 }
 
-[ "$#" -eq 1 ] || die "usage: $0 <major|minor|patch>"
+[ "$#" -eq 1 ] || die "usage: $0 <major|minor|patch|X.Y.Z>"
 part="$1"
 case "$part" in
   major | minor | patch) ;;
-  *) die "unknown part '$part'; expected major, minor or patch" ;;
+  *)
+    echo "$part" | grep -qE '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' ||
+      die "unknown part '$part'; expected major, minor, patch or an X.Y.Z version"
+    ;;
 esac
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -52,6 +59,18 @@ case "$part" in
   major) next="$((major + 1)).0.0" ;;
   minor) next="$major.$((minor + 1)).0" ;;
   patch) next="$major.$minor.$((patch + 1))" ;;
+  *)
+    IFS=. read -r next_major next_minor next_patch <<EOF
+$part
+EOF
+    if [ "$next_major" -gt "$major" ] ||
+      { [ "$next_major" -eq "$major" ] && [ "$next_minor" -gt "$minor" ]; } ||
+      { [ "$next_major" -eq "$major" ] && [ "$next_minor" -eq "$minor" ] && [ "$next_patch" -gt "$patch" ]; }; then
+      next="$part"
+    else
+      die "version $part is not greater than the current version $current"
+    fi
+    ;;
 esac
 
 count=$(grep -cxF '## [Unreleased]' "$changelog" || true)

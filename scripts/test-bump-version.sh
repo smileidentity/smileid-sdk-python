@@ -67,6 +67,12 @@ expect_version major 2.0.0
 expect_version minor 1.3.0
 expect_version patch 1.2.4
 
+# An exact version jumps straight there, including across a major.
+expect_version 1.2.5 1.2.5
+expect_version 1.4.0 1.4.0
+expect_version 3.0.0 3.0.0
+expect_version 13.10.2 13.10.2
+
 # The changelog is cut under a dated heading with an empty Unreleased section.
 dir="$(fixture changelog)"
 RELEASE_DATE=2026-02-03 "$dir/scripts/bump-version.sh" minor >/dev/null
@@ -118,6 +124,16 @@ expect_failure empty-part '' ':'
 expect_failure mismatch minor "sed 's/1.2.3/9.9.9/' usesmileid/_version.py >v && mv v usesmileid/_version.py"
 expect_failure no-unreleased minor "grep -v '^## \\[Unreleased\\]' CHANGELOG.md >c && mv c CHANGELOG.md"
 expect_failure already-cut patch "printf '## [1.2.4] - 2026-01-02\n' >>CHANGELOG.md"
+expect_failure exact-equal 1.2.3 ':'
+expect_failure exact-lower-patch 1.2.2 ':'
+expect_failure exact-lower-minor 1.1.9 ':'
+expect_failure exact-lower-major 0.9.9 ':'
+expect_failure exact-v-prefix v1.3.0 ':'
+expect_failure exact-two-parts 1.3 ':'
+expect_failure exact-four-parts 1.3.0.1 ':'
+expect_failure exact-prerelease 1.3.0-rc.1 ':'
+expect_failure exact-leading-zero 1.03.0 ':'
+expect_failure exact-already-cut 1.4.0 "printf '## [1.4.0] - 2026-01-02\n' >>CHANGELOG.md"
 
 if [ "$failures" -ne 0 ]; then
   echo "$failures bump-version test(s) failed" >&2
