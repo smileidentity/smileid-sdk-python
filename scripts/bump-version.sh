@@ -27,7 +27,9 @@ part="$1"
 case "$part" in
   major | minor | patch) ;;
   *)
-    echo "$part" | grep -qE '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' ||
+    # [[ =~ ]] matches the whole argument; grep would pass one with a newline in it.
+    semver_re='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+    [[ "$part" =~ $semver_re ]] ||
       die "unknown part '$part'; expected major, minor, patch or an X.Y.Z version"
     ;;
 esac

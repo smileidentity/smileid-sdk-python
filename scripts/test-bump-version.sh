@@ -133,6 +133,7 @@ expect_failure exact-two-parts 1.3 ':'
 expect_failure exact-four-parts 1.3.0.1 ':'
 expect_failure exact-prerelease 1.3.0-rc.1 ':'
 expect_failure exact-leading-zero 1.03.0 ':'
+expect_failure exact-newline $'1.3.0\nanything' ':'
 expect_failure exact-already-cut 1.4.0 "printf '## [1.4.0] - 2026-01-02\n' >>CHANGELOG.md"
 
 if [ "$failures" -ne 0 ]; then
